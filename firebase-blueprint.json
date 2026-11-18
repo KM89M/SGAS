@@ -64,7 +64,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["code", "nameAr", "nameEn", "isActive", "createdAt", "updatedAt"]
+      "required": ["code", "nameAr", "isActive", "createdAt", "updatedAt"]
     },
     "AcademicProgram": {
       "title": "AcademicProgram",
@@ -81,7 +81,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["code", "nameAr", "nameEn", "degreeType", "departmentId", "isActive", "createdAt", "updatedAt"]
+      "required": ["code", "nameAr", "degreeType", "departmentId", "isActive", "createdAt", "updatedAt"]
     },
     "AcademicYear": {
       "title": "AcademicYear",
@@ -114,7 +114,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["academicYearId", "nameAr", "nameEn", "semesterNumber", "startDate", "endDate", "isCurrent", "isActive", "createdAt", "updatedAt"]
+      "required": ["academicYearId", "nameAr", "semesterNumber", "startDate", "endDate", "isCurrent", "isActive", "createdAt", "updatedAt"]
     },
     "Cohort": {
       "title": "Cohort",
@@ -131,7 +131,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["nameAr", "nameEn", "departmentId", "programId", "academicYearId", "isActive", "createdAt", "updatedAt"]
+      "required": ["nameAr", "departmentId", "programId", "academicYearId", "isActive", "createdAt", "updatedAt"]
     },
     "Student": {
       "title": "Student",
@@ -154,7 +154,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["universityId", "fullNameAr", "fullNameEn", "email", "departmentId", "programId", "enrollmentStatus", "accountStatus", "createdAt", "updatedAt"]
+      "required": ["universityId", "fullNameAr", "email", "departmentId", "programId", "enrollmentStatus", "accountStatus", "createdAt", "updatedAt"]
     },
     "Lecturer": {
       "title": "Lecturer",
@@ -173,7 +173,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["lecturerCode", "fullNameAr", "fullNameEn", "academicTitleAr", "email", "departmentId", "accountStatus", "createdAt", "updatedAt"]
+      "required": ["lecturerCode", "fullNameAr", "academicTitleAr", "email", "departmentId", "accountStatus", "createdAt", "updatedAt"]
     },
     "Subject": {
       "title": "Subject",
@@ -196,7 +196,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["code", "nameAr", "nameEn", "departmentId", "programId", "subjectType", "weeklyHours", "totalPlannedHours", "isActive", "createdAt", "updatedAt"]
+      "required": ["code", "nameAr", "departmentId", "programId", "subjectType", "weeklyHours", "totalPlannedHours", "isActive", "createdAt", "updatedAt"]
     },
     "StudentEnrollment": {
       "title": "StudentEnrollment",
@@ -264,7 +264,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["titleAr", "titleEn", "startDate", "endDate", "type", "isActive", "createdAt", "updatedAt"]
+      "required": ["titleAr", "startDate", "endDate", "type", "isActive", "createdAt", "updatedAt"]
     },
     "AttendanceSession": {
       "title": "AttendanceSession",

@@ -109,13 +109,14 @@ export const ImportExportView: React.FC = () => {
       } else if (entityType === 'lecturers') {
         for (const r of rawRows) {
           const dept = dataset.departments.find((d) => d.code === String(r.departmentCode || '')) || dataset.departments[0];
+          if (!dept || !r.lecturerCode || !r.fullNameAr) continue;
           await saveLecturer({
-            lecturerCode: String(r.lecturerCode || ''),
-            fullNameAr: String(r.fullNameAr || ''),
-            fullNameEn: String(r.fullNameEn || ''),
+            lecturerCode: String(r.lecturerCode),
+            fullNameAr: String(r.fullNameAr),
+            fullNameEn: String(r.fullNameEn || r.fullNameAr),
             academicTitleAr: String(r.academicTitleAr || 'مدرس'),
-            email: String(r.email || ''),
-            departmentId: dept?.id || '',
+            email: String(r.email || `${r.lecturerCode}@mtu.edu.iq`),
+            departmentId: dept.id,
           });
           imported++;
         }
@@ -123,12 +124,13 @@ export const ImportExportView: React.FC = () => {
         for (const r of rawRows) {
           const dept = dataset.departments.find((d) => d.code === String(r.departmentCode || '')) || dataset.departments[0];
           const prog = dataset.programs.find((p) => p.code === String(r.programCode || '')) || dataset.programs[0];
+          if (!dept || !prog || !r.code || !r.nameAr) continue;
           await saveSubject({
-            code: String(r.code || ''),
-            nameAr: String(r.nameAr || ''),
-            nameEn: String(r.nameEn || ''),
-            departmentId: dept?.id || '',
-            programId: prog?.id || '',
+            code: String(r.code),
+            nameAr: String(r.nameAr),
+            nameEn: String(r.nameEn || r.nameAr),
+            departmentId: dept.id,
+            programId: prog.id,
             weeklyHours: Number(r.weeklyHours) || 2,
             totalPlannedHours: Number(r.totalPlannedHours) || 30,
           });

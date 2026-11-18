@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Bot, Send, Search, BarChart3, Sparkles, Database } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Bot, Send, Search, BarChart3, Sparkles, Database, RotateCcw } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useSGAS } from '../context/SGASContext';
+import { runNonAiFallbackQuery } from '../../server/analyticsEngine';
 
 interface ChatTurn {
   id: string;
@@ -16,18 +17,23 @@ export const AIAssistantView: React.FC<{ onOpenReports?: () => void }> = ({ onOp
   const { lang, currentUser, dataset, getAuthToken, logAiActivity, pushToast } = useSGAS();
   const isAr = lang === 'ar';
 
+  const makeWelcomeTurn = (): ChatTurn => ({
+    id: 'welcome',
+    role: 'model',
+    text: isAr
+      ? 'مرحباً بك في المساعد الذكي للدراسات العليا. أستطيع تحليل الحضور والغيابات والساعات المنجزة ومقارنة الأقسام والبرامج بناءً على صلاحياتك المباشرة وبيانات قاعدة البيانات المعتمدة فقط.'
+      : 'Welcome to the Graduate AI Assistant. I answer read-only attendance, academic hours, and absence-limit questions using verified database tool queries within your role scope.',
+  });
+
   const [mode, setMode] = useState<'ai' | 'deterministic'>('ai');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [turns, setTurns] = useState<ChatTurn[]>([
-    {
-      id: 'welcome',
-      role: 'model',
-      text: isAr
-        ? 'مرحباً بك في المساعد الذكي للدراسات العليا. أستطيع تحليل الحضور والغيابات والساعات المنجزة ومقارنة الأقسام والبرامج بناءً على صلاحياتك المباشرة وبيانات قاعدة البيانات المعتمدة فقط.'
-        : 'Welcome to the Graduate AI Assistant. I answer read-only attendance, academic hours, and absence-limit questions using verified database tool queries within your role scope.',
-    },
-  ]);
+  const [turns, setTurns] = useState<ChatTurn[]>([makeWelcomeTurn()]);
+  const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [turns, loading]);
 
   const examplePrompts = isAr
     ? [
@@ -49,56 +55,142 @@ export const AIAssistantView: React.FC<{ onOpenReports?: () => void }> = ({ onOp
     const queryText = (promptOverride ?? input).trim();
     if (!queryText || loading) return;
 
+    const historyPayload = turns
+      .filter((t) => t.id !== 'welcome' && t.text.trim().length > 0)
+      .slice(-6)
+      .map((t) => ({ role: t.role, text: t.text }));
+
     const userTurn: ChatTurn = { id: `u_${Date.now()}`, role: 'user', text: queryText };
     setTurns((prev) => [...prev, userTurn]);
     if (!promptOverride) setInput('');
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
+
     try {
       const token = await getAuthToken();
-      const resp = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          message: mode === 'deterministic' ? `إحصائيات مباشرة: ${queryText}` : queryText,
-          history: turns.slice(-6).map((t) => ({ role: t.role, text: t.text })),
+      const analyticsDataset = {
+        departments: dataset.departments,
+        programs: dataset.programs,
+        students: dataset.students,
+        lecturers: dataset.lecturers,
+        subjects: dataset.subjects,
+        enrollments: dataset.enrollments,
+        lectures: dataset.lectures,
+        records: dataset.records,
+        sessions: dataset.sessions,
+        policies: dataset.policies,
+      };
+
+      let data: {
+        answer?: string;
+        modelUsed?: string;
+        toolsCalled?: string[];
+        toolResults?: Array<{ tool: string; data: unknown }>;
+        status?: string;
+        error?: string;
+      } | null = null;
+
+      try {
+        const resp = await fetch('/api/ai/chat', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            message: queryText,
+            history: historyPayload,
+            role: currentUser?.role || 'student',
+            departmentId: currentUser?.departmentId,
+            linkedEntityId: currentUser?.linkedEntityId,
+            dataset: analyticsDataset,
+            lang,
+            deterministicOnly: mode === 'deterministic',
+          }),
+        });
+
+        const contentType = resp.headers.get('content-type') || '';
+        if (resp.status === 404 || resp.status === 405 || !contentType.includes('application/json')) {
+          // Static host (e.g. GitHub Pages) has no Express backend; use client-side deterministic engine
+          data = null;
+        } else {
+          const parsed = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            throw new Error(parsed.error || `Assistant request failed (${resp.status})`);
+          }
+          data = parsed;
+        }
+      } catch (fetchErr) {
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+          throw fetchErr;
+        }
+        // If API endpoint unreachable (static hosting), fallback locally unless explicit API error
+        if (fetchErr instanceof Error && fetchErr.message.startsWith('Assistant request failed')) {
+          throw fetchErr;
+        }
+        data = null;
+      }
+
+      if (!data) {
+        const fb = runNonAiFallbackQuery(queryText, {
+          uid: currentUser?.uid || 'unknown',
           role: currentUser?.role || 'student',
           departmentId: currentUser?.departmentId,
           linkedEntityId: currentUser?.linkedEntityId,
           dataset,
-          lang,
-        }),
-      });
-
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || 'Assistant request failed');
+        });
+        data = {
+          answer: isAr
+            ? 'نتائج البحث الإحصائي المباشر من قاعدة البيانات المصرح بها:'
+            : 'Direct statistical query results from your authorized database scope:',
+          toolsCalled: [fb.tool],
+          toolResults: [{ tool: fb.tool, data: fb.data }],
+          modelUsed: 'client-deterministic',
+          status: 'fallback',
+        };
       }
 
       const modelTurn: ChatTurn = {
         id: `m_${Date.now()}`,
         role: 'model',
-        text: data.answer,
+        text: data.answer || (isAr ? 'تم استخراج النتائج.' : 'Results retrieved.'),
         modelUsed: data.modelUsed,
         toolsCalled: data.toolsCalled,
         toolResults: data.toolResults,
       };
       setTurns((prev) => [...prev, modelTurn]);
 
-      await logAiActivity({
+      logAiActivity({
         actorUid: currentUser?.uid || 'unknown',
         actorRole: currentUser?.role || 'student',
         queryText,
         toolsCalled: data.toolsCalled || [],
         modelUsed: data.modelUsed || 'gemini-4-hydrogen',
-        status: data.status || 'success',
-      });
+        status: (data.status as 'success' | 'fallback' | 'denied') || 'success',
+      }).catch(() => undefined);
     } catch (err) {
-      pushToast('error', err instanceof Error ? err.message : 'AI query error');
+      const errMsg =
+        err instanceof Error && err.name === 'AbortError'
+          ? isAr
+            ? 'انتهت مهلة انتظار الخادم، يمكنك إعادة المحاولة أو التحويل إلى البحث الإحصائي المباشر.'
+            : 'Request timed out. You can try again or switch to Direct Stats Search.'
+          : err instanceof Error
+            ? err.message
+            : 'AI query error';
+      pushToast('error', errMsg);
+      setTurns((prev) => [
+        ...prev,
+        {
+          id: `err_${Date.now()}`,
+          role: 'model',
+          text: errMsg,
+        },
+      ]);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -123,25 +215,36 @@ export const AIAssistantView: React.FC<{ onOpenReports?: () => void }> = ({ onOp
           </div>
         </div>
 
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setMode('ai')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold ${
-              mode === 'ai' ? 'bg-white text-[#1565C0] shadow-xs' : 'text-slate-600'
-            }`}
+            onClick={() => setTurns([makeWelcomeTurn()])}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isAr ? 'المحادثة الذكية' : 'AI Chat'}</span>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{isAr ? 'محادثة جديدة' : 'New Chat'}</span>
           </button>
-          <button
-            onClick={() => setMode('deterministic')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold ${
-              mode === 'deterministic' ? 'bg-white text-[#1565C0] shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>{isAr ? 'البحث الإحصائي المباشر' : 'Direct Stats Search'}</span>
-          </button>
+
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+            <button
+              onClick={() => setMode('ai')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold ${
+                mode === 'ai' ? 'bg-white text-[#1565C0] shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{isAr ? 'المحادثة الذكية' : 'AI Chat'}</span>
+            </button>
+            <button
+              onClick={() => setMode('deterministic')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold ${
+                mode === 'deterministic' ? 'bg-white text-[#1565C0] shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{isAr ? 'البحث الإحصائي المباشر' : 'Direct Stats Search'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -150,8 +253,9 @@ export const AIAssistantView: React.FC<{ onOpenReports?: () => void }> = ({ onOp
         {examplePrompts.map((p) => (
           <button
             key={p}
+            disabled={loading}
             onClick={() => handleSend(p)}
-            className="px-3 py-1.5 rounded-xl bg-white border border-blue-100 text-xs font-medium text-[#1565C0] hover:bg-[#E3F2FD] transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-white border border-blue-100 text-xs font-medium text-[#1565C0] hover:bg-[#E3F2FD] transition-colors disabled:opacity-50"
           >
             {p}
           </button>
@@ -195,6 +299,7 @@ export const AIAssistantView: React.FC<{ onOpenReports?: () => void }> = ({ onOp
             {isAr ? 'جاري استعلام قاعدة البيانات وتحليل النتائج...' : 'Querying authorized database tools...'}
           </div>
         )}
+        <div ref={endOfMessagesRef} />
       </div>
 
       {/* Input Form */}

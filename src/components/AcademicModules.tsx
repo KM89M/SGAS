@@ -583,9 +583,9 @@ export const AcademicModules: React.FC<{ view: AcademicViewTab }> = ({ view }) =
       {deptModal && (
         <Modal title={deptModal.id ? (isAr ? 'تعديل قسم علمي' : 'Edit Department') : (isAr ? 'إضافة قسم علمي' : 'Add Department')} onClose={() => setDeptModal(null)}>
           <div className="space-y-3 text-sm">
-            <Input label={isAr ? 'رمز القسم (أحرف وأرقام إنجليزية)' : 'Department Code'} value={deptModal.code || ''} onChange={(v) => setDeptModal({ ...deptModal, code: v })} />
-            <Input label={isAr ? 'اسم القسم بالعربية' : 'Arabic Name'} value={deptModal.nameAr || ''} onChange={(v) => setDeptModal({ ...deptModal, nameAr: v })} />
-            <Input label={isAr ? 'اسم القسم بالإنجليزية' : 'English Name'} value={deptModal.nameEn || ''} onChange={(v) => setDeptModal({ ...deptModal, nameEn: v })} />
+            <Input label={isAr ? 'رمز القسم (أحرف وأرقام إنجليزية) *' : 'Department Code *'} value={deptModal.code || ''} onChange={(v) => setDeptModal({ ...deptModal, code: v })} />
+            <Input label={isAr ? 'اسم القسم بالعربية *' : 'Arabic Name *'} value={deptModal.nameAr || ''} onChange={(v) => setDeptModal({ ...deptModal, nameAr: v })} />
+            <Input label={isAr ? 'اسم القسم بالإنجليزية (اختياري)' : 'English Name (Optional)'} value={deptModal.nameEn || ''} onChange={(v) => setDeptModal({ ...deptModal, nameEn: v })} />
             <Input label={isAr ? 'اسم مشرف القسم' : 'Department Admin Name'} value={deptModal.adminName || ''} onChange={(v) => setDeptModal({ ...deptModal, adminName: v })} />
             <ModalFooter saving={saving} isAr={isAr} onCancel={() => setDeptModal(null)} onSave={() => handleSave(() => saveDepartment({ ...deptModal, code: deptModal.code || '', nameAr: deptModal.nameAr || '', nameEn: deptModal.nameEn || '' }), () => setDeptModal(null))} />
           </div>
@@ -595,10 +595,15 @@ export const AcademicModules: React.FC<{ view: AcademicViewTab }> = ({ view }) =
       {progModal && (
         <Modal title={isAr ? 'بيانات البرنامج الدراسي' : 'Academic Program'} onClose={() => setProgModal(null)}>
           <div className="space-y-3 text-sm">
-            <Input label={isAr ? 'رمز البرنامج' : 'Program Code'} value={progModal.code || ''} onChange={(v) => setProgModal({ ...progModal, code: v })} />
-            <Input label={isAr ? 'الاسم بالعربية' : 'Arabic Name'} value={progModal.nameAr || ''} onChange={(v) => setProgModal({ ...progModal, nameAr: v })} />
-            <Input label={isAr ? 'الاسم بالإنجليزية' : 'English Name'} value={progModal.nameEn || ''} onChange={(v) => setProgModal({ ...progModal, nameEn: v })} />
-            <Select label={isAr ? 'القسم العلمي' : 'Department'} value={progModal.departmentId || ''} onChange={(v) => setProgModal({ ...progModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
+            {dataset.departments.length === 0 && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                {isAr ? 'يرجى إضافة قسم علمي أولاً من تبويب «الأقسام العلمية» قبل إضافة البرامج الدراسية.' : 'Please create a Department first before adding Academic Programs.'}
+              </div>
+            )}
+            <Input label={isAr ? 'رمز البرنامج *' : 'Program Code *'} value={progModal.code || ''} onChange={(v) => setProgModal({ ...progModal, code: v })} />
+            <Input label={isAr ? 'الاسم بالعربية *' : 'Arabic Name *'} value={progModal.nameAr || ''} onChange={(v) => setProgModal({ ...progModal, nameAr: v })} />
+            <Input label={isAr ? 'الاسم بالإنجليزية (اختياري)' : 'English Name (Optional)'} value={progModal.nameEn || ''} onChange={(v) => setProgModal({ ...progModal, nameEn: v })} />
+            <Select label={isAr ? 'القسم العلمي *' : 'Department *'} value={progModal.departmentId || ''} onChange={(v) => setProgModal({ ...progModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
             <Select label={isAr ? 'الدرجة العلمية' : 'Degree Type'} value={progModal.degreeType || 'masters'} onChange={(v) => setProgModal({ ...progModal, degreeType: v as AcademicProgram['degreeType'] })} options={[{ value: 'masters', label: t.common.masters }, { value: 'phd', label: t.common.phd }, { value: 'diploma', label: t.common.diploma }]} />
             <Input label={isAr ? 'إجمالي الساعات المطلوبة' : 'Total Required Hours'} type="number" value={String(progModal.totalRequiredHours || 180)} onChange={(v) => setProgModal({ ...progModal, totalRequiredHours: Number(v) })} />
             <ModalFooter saving={saving} isAr={isAr} onCancel={() => setProgModal(null)} onSave={() => handleSave(() => saveProgram({ ...progModal, code: progModal.code || '', nameAr: progModal.nameAr || '', nameEn: progModal.nameEn || '', degreeType: progModal.degreeType || 'masters', departmentId: progModal.departmentId || '' }), () => setProgModal(null))} />
@@ -609,13 +614,18 @@ export const AcademicModules: React.FC<{ view: AcademicViewTab }> = ({ view }) =
       {stuModal && (
         <Modal title={isAr ? 'بيانات طالب الدراسات العليا' : 'Graduate Student'} onClose={() => setStuModal(null)}>
           <div className="space-y-3 text-sm">
-            <Input label={isAr ? 'الرقم الجامعي الفريد' : 'University Registration ID'} value={stuModal.universityId || ''} onChange={(v) => setStuModal({ ...stuModal, universityId: v })} />
-            <Input label={isAr ? 'الاسم الكامل بالعربية' : 'Full Arabic Name'} value={stuModal.fullNameAr || ''} onChange={(v) => setStuModal({ ...stuModal, fullNameAr: v })} />
-            <Input label={isAr ? 'الاسم الكامل بالإنجليزية' : 'Full English Name'} value={stuModal.fullNameEn || ''} onChange={(v) => setStuModal({ ...stuModal, fullNameEn: v })} />
-            <Input label={isAr ? 'البريد الإلكتروني الجامعي' : 'University Email'} type="email" value={stuModal.email || ''} onChange={(v) => setStuModal({ ...stuModal, email: v })} />
+            {(dataset.departments.length === 0 || dataset.programs.length === 0) && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                {isAr ? 'تأكد من إنشاء «الأقسام العلمية» و«البرامج الدراسية» أولاً قبل تسجيل الطلبة.' : 'Make sure at least one Department and Program exist before adding students.'}
+              </div>
+            )}
+            <Input label={isAr ? 'الرقم الجامعي الفريد *' : 'University Registration ID *'} value={stuModal.universityId || ''} onChange={(v) => setStuModal({ ...stuModal, universityId: v })} />
+            <Input label={isAr ? 'الاسم الكامل بالعربية *' : 'Full Arabic Name *'} value={stuModal.fullNameAr || ''} onChange={(v) => setStuModal({ ...stuModal, fullNameAr: v })} />
+            <Input label={isAr ? 'الاسم الكامل بالإنجليزية (اختياري)' : 'Full English Name (Optional)'} value={stuModal.fullNameEn || ''} onChange={(v) => setStuModal({ ...stuModal, fullNameEn: v })} />
+            <Input label={isAr ? 'البريد الإلكتروني الجامعي *' : 'University Email *'} type="email" value={stuModal.email || ''} onChange={(v) => setStuModal({ ...stuModal, email: v })} />
             <Input label={isAr ? 'رقم الهاتف (اختياري)' : 'Phone (Optional)'} value={stuModal.phone || ''} onChange={(v) => setStuModal({ ...stuModal, phone: v })} />
-            <Select label={isAr ? 'القسم العلمي' : 'Department'} value={stuModal.departmentId || ''} onChange={(v) => setStuModal({ ...stuModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
-            <Select label={isAr ? 'البرنامج الدراسي' : 'Program'} value={stuModal.programId || ''} onChange={(v) => setStuModal({ ...stuModal, programId: v })} options={dataset.programs.map((p) => ({ value: p.id, label: isAr ? p.nameAr : p.nameEn }))} />
+            <Select label={isAr ? 'القسم العلمي *' : 'Department *'} value={stuModal.departmentId || ''} onChange={(v) => setStuModal({ ...stuModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
+            <Select label={isAr ? 'البرنامج الدراسي *' : 'Program *'} value={stuModal.programId || ''} onChange={(v) => setStuModal({ ...stuModal, programId: v })} options={dataset.programs.map((p) => ({ value: p.id, label: isAr ? p.nameAr : p.nameEn }))} />
             <ModalFooter saving={saving} isAr={isAr} onCancel={() => setStuModal(null)} onSave={() => handleSave(() => saveStudent({ ...stuModal, universityId: stuModal.universityId || '', fullNameAr: stuModal.fullNameAr || '', fullNameEn: stuModal.fullNameEn || '', email: stuModal.email || '', departmentId: stuModal.departmentId || '', programId: stuModal.programId || '' }), () => setStuModal(null))} />
           </div>
         </Modal>
@@ -624,12 +634,17 @@ export const AcademicModules: React.FC<{ view: AcademicViewTab }> = ({ view }) =
       {lecModal && (
         <Modal title={isAr ? 'بيانات التدريسي' : 'Lecturer'} onClose={() => setLecModal(null)}>
           <div className="space-y-3 text-sm">
-            <Input label={isAr ? 'رمز التدريسي' : 'Lecturer Code'} value={lecModal.lecturerCode || ''} onChange={(v) => setLecModal({ ...lecModal, lecturerCode: v })} />
-            <Input label={isAr ? 'اللقب العلمي' : 'Academic Title'} value={lecModal.academicTitleAr || ''} onChange={(v) => setLecModal({ ...lecModal, academicTitleAr: v })} />
-            <Input label={isAr ? 'الاسم بالعربية' : 'Full Arabic Name'} value={lecModal.fullNameAr || ''} onChange={(v) => setLecModal({ ...lecModal, fullNameAr: v })} />
-            <Input label={isAr ? 'الاسم بالإنجليزية' : 'Full English Name'} value={lecModal.fullNameEn || ''} onChange={(v) => setLecModal({ ...lecModal, fullNameEn: v })} />
-            <Input label={isAr ? 'البريد الإلكتروني الجامعي' : 'University Email'} type="email" value={lecModal.email || ''} onChange={(v) => setLecModal({ ...lecModal, email: v })} />
-            <Select label={isAr ? 'القسم العلمي' : 'Department'} value={lecModal.departmentId || ''} onChange={(v) => setLecModal({ ...lecModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
+            {dataset.departments.length === 0 && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                {isAr ? 'يجب إنشاء قسم علمي أولاً من تبويب «الأقسام العلمية» قبل إضافة التدريسيين.' : 'Please create a Department first from the Departments tab before adding lecturers.'}
+              </div>
+            )}
+            <Input label={isAr ? 'رمز التدريسي (أرقام أو أحرف إنجليزية) *' : 'Lecturer Code *'} value={lecModal.lecturerCode || ''} onChange={(v) => setLecModal({ ...lecModal, lecturerCode: v })} />
+            <Input label={isAr ? 'اللقب العلمي *' : 'Academic Title *'} value={lecModal.academicTitleAr || ''} onChange={(v) => setLecModal({ ...lecModal, academicTitleAr: v })} />
+            <Input label={isAr ? 'الاسم بالعربية *' : 'Full Arabic Name *'} value={lecModal.fullNameAr || ''} onChange={(v) => setLecModal({ ...lecModal, fullNameAr: v })} />
+            <Input label={isAr ? 'الاسم بالإنجليزية (اختياري)' : 'Full English Name (Optional)'} value={lecModal.fullNameEn || ''} onChange={(v) => setLecModal({ ...lecModal, fullNameEn: v })} />
+            <Input label={isAr ? 'البريد الإلكتروني الجامعي *' : 'University Email *'} type="email" value={lecModal.email || ''} onChange={(v) => setLecModal({ ...lecModal, email: v })} />
+            <Select label={isAr ? 'القسم العلمي *' : 'Department *'} value={lecModal.departmentId || ''} onChange={(v) => setLecModal({ ...lecModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
             <ModalFooter saving={saving} isAr={isAr} onCancel={() => setLecModal(null)} onSave={() => handleSave(() => saveLecturer({ ...lecModal, lecturerCode: lecModal.lecturerCode || '', fullNameAr: lecModal.fullNameAr || '', fullNameEn: lecModal.fullNameEn || '', academicTitleAr: lecModal.academicTitleAr || '', email: lecModal.email || '', departmentId: lecModal.departmentId || '' }), () => setLecModal(null))} />
           </div>
         </Modal>
@@ -638,11 +653,16 @@ export const AcademicModules: React.FC<{ view: AcademicViewTab }> = ({ view }) =
       {subModal && (
         <Modal title={isAr ? 'بيانات المادة الدراسية' : 'Academic Subject'} onClose={() => setSubModal(null)}>
           <div className="space-y-3 text-sm">
-            <Input label={isAr ? 'رمز المادة' : 'Subject Code'} value={subModal.code || ''} onChange={(v) => setSubModal({ ...subModal, code: v })} />
-            <Input label={isAr ? 'اسم المادة بالعربية' : 'Arabic Name'} value={subModal.nameAr || ''} onChange={(v) => setSubModal({ ...subModal, nameAr: v })} />
-            <Input label={isAr ? 'اسم المادة بالإنجليزية' : 'English Name'} value={subModal.nameEn || ''} onChange={(v) => setSubModal({ ...subModal, nameEn: v })} />
-            <Select label={isAr ? 'القسم العلمي' : 'Department'} value={subModal.departmentId || ''} onChange={(v) => setSubModal({ ...subModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
-            <Select label={isAr ? 'البرنامج' : 'Program'} value={subModal.programId || ''} onChange={(v) => setSubModal({ ...subModal, programId: v })} options={dataset.programs.map((p) => ({ value: p.id, label: isAr ? p.nameAr : p.nameEn }))} />
+            {(dataset.departments.length === 0 || dataset.programs.length === 0) && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                {isAr ? 'تأكد من إنشاء «الأقسام العلمية» و«البرامج الدراسية» أولاً قبل إضافة المواد.' : 'Make sure at least one Department and Program exist before adding subjects.'}
+              </div>
+            )}
+            <Input label={isAr ? 'رمز المادة *' : 'Subject Code *'} value={subModal.code || ''} onChange={(v) => setSubModal({ ...subModal, code: v })} />
+            <Input label={isAr ? 'اسم المادة بالعربية *' : 'Arabic Name *'} value={subModal.nameAr || ''} onChange={(v) => setSubModal({ ...subModal, nameAr: v })} />
+            <Input label={isAr ? 'اسم المادة بالإنجليزية (اختياري)' : 'English Name (Optional)'} value={subModal.nameEn || ''} onChange={(v) => setSubModal({ ...subModal, nameEn: v })} />
+            <Select label={isAr ? 'القسم العلمي *' : 'Department *'} value={subModal.departmentId || ''} onChange={(v) => setSubModal({ ...subModal, departmentId: v })} options={dataset.departments.map((d) => ({ value: d.id, label: isAr ? d.nameAr : d.nameEn }))} />
+            <Select label={isAr ? 'البرنامج *' : 'Program *'} value={subModal.programId || ''} onChange={(v) => setSubModal({ ...subModal, programId: v })} options={dataset.programs.map((p) => ({ value: p.id, label: isAr ? p.nameAr : p.nameEn }))} />
             <Select label={isAr ? 'نوع المادة' : 'Subject Type'} value={subModal.subjectType || 'mandatory'} onChange={(v) => setSubModal({ ...subModal, subjectType: v as Subject['subjectType'] })} options={[{ value: 'mandatory', label: t.common.mandatory }, { value: 'elective', label: t.common.elective }]} />
             <div className="grid grid-cols-2 gap-3">
               <Input label={isAr ? 'الساعات الأسبوعية' : 'Weekly Hours'} type="number" value={String(subModal.weeklyHours || 3)} onChange={(v) => setSubModal({ ...subModal, weeklyHours: Number(v) })} />

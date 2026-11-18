@@ -1,7 +1,8 @@
-import React from 'react';
-import { ShieldAlert, ShieldCheck, Globe, GraduationCap, PlayCircle, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldAlert, ShieldCheck, Globe, GraduationCap, PlayCircle, LogOut, Copy, Check, ExternalLink } from 'lucide-react';
 import { useSGAS } from '../context/SGASContext';
 import { INSTITUTION } from '../lib/i18n';
+import { FIREBASE_PROJECT_ID } from '../lib/firebase';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export const LoginView: React.FC = () => {
@@ -10,11 +11,24 @@ export const LoginView: React.FC = () => {
     setLang,
     t,
     authStatus,
+    authError,
     firebaseUser,
     loginWithGoogle,
     logout,
     enterDemoMode,
   } = useSGAS();
+
+  const [copiedDomain, setCopiedDomain] = useState(false);
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+  const firebaseAuthSettingsUrl = `https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/authentication/settings`;
+
+  const copyHost = () => {
+    if (!currentHost || typeof navigator === 'undefined') return;
+    navigator.clipboard?.writeText(currentHost).then(() => {
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2000);
+    }).catch(() => undefined);
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F9FF] flex flex-col justify-between">
@@ -95,6 +109,11 @@ export const LoginView: React.FC = () => {
                   <p className="text-sm text-slate-600 leading-relaxed">
                     {t.unauthorizedDesc}
                   </p>
+                  {authError && (
+                    <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-mono-num">
+                      {authError.message}
+                    </div>
+                  )}
                   {firebaseUser?.email && (
                     <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-mono-num">
                       {firebaseUser.email}
@@ -128,6 +147,47 @@ export const LoginView: React.FC = () => {
                       : 'Sign in with your authorized institutional account to access your dashboard or record lecture attendance.'}
                   </p>
                 </div>
+
+                {authError && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-200 space-y-2.5 text-xs text-red-900">
+                    <div className="flex items-start gap-2 font-bold text-red-700">
+                      <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{authError.message}</span>
+                    </div>
+
+                    {authError.code === 'auth/unauthorized-domain' && currentHost && (
+                      <div className="space-y-2 pt-1 text-[11px] leading-relaxed text-slate-700">
+                        <p>
+                          {lang === 'ar'
+                            ? 'لحل هذه المشكلة على الاستضافة الحالية، أضف اسم النطاق التالي في إعدادات Firebase Authentication → Settings → Authorized domains:'
+                            : 'To enable Google Sign-In on this host, add this domain under Firebase Authentication → Settings → Authorized domains:'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="px-2.5 py-1 rounded-lg bg-white border border-red-200 font-mono-num text-slate-900 select-all">
+                            {currentHost}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={copyHost}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold"
+                          >
+                            {copiedDomain ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedDomain ? (lang === 'ar' ? 'تم النسخ' : 'Copied') : (lang === 'ar' ? 'نسخ النطاق' : 'Copy')}</span>
+                          </button>
+                          <a
+                            href={firebaseAuthSettingsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1565C0] text-white hover:bg-blue-800 font-semibold"
+                          >
+                            <span>{lang === 'ar' ? 'فتح إعدادات Firebase' : 'Open Firebase Auth Settings'}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="p-4 rounded-xl bg-[#F5F9FF] border border-blue-100 flex items-start gap-3">
                   <ShieldCheck className="w-5 h-5 text-[#1565C0] shrink-0 mt-0.5" />

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import express from 'express';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { GoogleGenAI, Type, type FunctionDeclaration } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type, type FunctionDeclaration } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -171,22 +171,18 @@ const GEMINI_TOOLS: FunctionDeclaration[] = [
   {
     name: 'get_department_statistics',
     description: 'Compare attendance rates, Masters vs PhD counts, and lecture volume across authorized academic departments.',
-    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: 'get_lecturer_statistics',
     description: 'Get lecture counts, delivered academic hours, and pending approvals per lecturer.',
-    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: 'get_absence_threshold_students',
     description: 'List pseudonymized student IDs approaching or exceeding the configured absence limit.',
-    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: 'get_pending_approvals',
     description: 'List lectures whose attendance sessions are open or awaiting lecturer approval.',
-    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: 'get_lecture_history',
@@ -316,7 +312,7 @@ export function createApiApp() {
       return res.status(429).json({ error: 'AI rate limit exceeded' });
     }
 
-    const { message, history, role, departmentId, linkedEntityId, dataset, lang } = req.body || {};
+    const { message, history, role, departmentId, linkedEntityId, dataset, lang, deterministicOnly } = req.body || {};
     if (typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: 'Message is required' });
     }
@@ -353,7 +349,22 @@ export function createApiApp() {
       });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    if (deterministicOnly) {
+      const fb = runNonAiFallbackQuery(message, scopedCtx);
+      return res.json({
+        answer:
+          lang === 'en'
+            ? 'Direct statistical query results from your authorized database scope:'
+            : 'نتائج البحث الإحصائي المباشر من قاعدة البيانات المصرح بها:',
+        toolsCalled: [fb.tool],
+        toolResults: [{ tool: fb.tool, data: fb.data }],
+        modelUsed: 'deterministic-direct',
+        status: 'success',
+      });
+    }
+
+    const rawApiKey = process.env.GEMINI_API_KEY?.trim();
+    const apiKey = rawApiKey && rawApiKey !== 'MY_GEMINI_API_KEY' ? rawApiKey : '';
     if (!apiKey) {
       const fb = runNonAiFallbackQuery(message, scopedCtx);
       return res.json({
@@ -365,8 +376,12 @@ export function createApiApp() {
         toolResults: [{ tool: fb.tool, data: fb.data }],
         modelUsed: 'deterministic-fallback',
         status: 'fallback',
+        fallbackReason: 'missing_api_key',
       });
     }
+
+    const toolsCalled: string[] = [];
+    const toolResults: Array<{ tool: string; data: unknown }> = [];
 
     try {
       const ai = new GoogleGenAI({
@@ -386,27 +401,47 @@ Rules:
 4. Current user role is "${safeRole}". Do not disclose records outside their scope, and never expose API keys or internal credentials.
 5. You are strictly read-only and cannot modify attendance records.`;
 
+      // Build valid Gemini contents: must start with 'user', have non-empty text, and alternate user/model
       const contents: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
       if (Array.isArray(history)) {
         for (const h of history.slice(-6)) {
-          if (h && (h.role === 'user' || h.role === 'model') && typeof h.text === 'string') {
-            contents.push({ role: h.role, parts: [{ text: h.text }] });
+          if (h && (h.role === 'user' || h.role === 'model') && typeof h.text === 'string' && h.text.trim()) {
+            if (contents.length === 0 && h.role !== 'user') continue;
+            const prev = contents[contents.length - 1];
+            if (prev && prev.role === h.role) {
+              prev.parts.push({ text: h.text.trim() });
+            } else {
+              contents.push({ role: h.role, parts: [{ text: h.text.trim() }] });
+            }
           }
         }
       }
-      contents.push({ role: 'user', parts: [{ text: message }] });
+      if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+        contents[contents.length - 1].parts.push({ text: message.trim() });
+      } else {
+        contents.push({ role: 'user', parts: [{ text: message.trim() }] });
+      }
 
-      const toolsCalled: string[] = [];
-      const toolResults: Array<{ tool: string; data: unknown }> = [];
+      const deadline = Date.now() + 20000;
+      const withTimeout = <T,>(promise: Promise<T>): Promise<T> => {
+        const remaining = Math.max(1000, deadline - Date.now());
+        return Promise.race([
+          promise,
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Gemini request timeout')), remaining)),
+        ]);
+      };
 
-      let response = await ai.models.generateContent({
-        model: 'gemini-4-hydrogen',
-        contents,
-        config: {
-          systemInstruction,
-          tools: [{ functionDeclarations: GEMINI_TOOLS }],
-        },
-      });
+      let response = await withTimeout(
+        ai.models.generateContent({
+          model: 'gemini-4-hydrogen',
+          contents,
+          config: {
+            systemInstruction,
+            tools: [{ functionDeclarations: GEMINI_TOOLS }],
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        }),
+      );
 
       // Up to 3 tool-calling rounds
       for (let round = 0; round < 3; round++) {
@@ -435,14 +470,17 @@ Rules:
 
         contents.push({ role: 'user', parts: responseParts });
 
-        response = await ai.models.generateContent({
-          model: 'gemini-4-hydrogen',
-          contents,
-          config: {
-            systemInstruction,
-            tools: [{ functionDeclarations: GEMINI_TOOLS }],
-          },
-        });
+        response = await withTimeout(
+          ai.models.generateContent({
+            model: 'gemini-4-hydrogen',
+            contents,
+            config: {
+              systemInstruction,
+              tools: [{ functionDeclarations: GEMINI_TOOLS }],
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            },
+          }),
+        );
       }
 
       const answerText = response.text || (lang === 'en' ? 'Analysis completed.' : 'تم استخراج التحليل المطلوب.');
@@ -454,17 +492,20 @@ Rules:
         status: 'success',
       });
     } catch (err) {
-      console.error('Gemini AI error:', err);
-      const fb = runNonAiFallbackQuery(message, scopedCtx);
+      const rawReason = err instanceof Error ? err.message : String(err);
+      const sanitizedReason = rawReason.replace(/AIza[0-9A-Za-z_-]+/g, '[REDACTED]').slice(0, 200);
+      console.error('Gemini AI error:', sanitizedReason);
+      const fb = toolResults.length > 0 ? null : runNonAiFallbackQuery(message, scopedCtx);
       return res.json({
         answer:
           lang === 'en'
             ? 'AI service quota or connection is currently unavailable. Showing deterministic database statistics via fallback engine:'
             : 'خدمة الذكاء الاصطناعي غير متاحة حالياً أو تم استنفاد الحصة المجانية. تم عرض الإحصاءات الدقيقة عبر محرك البحث الحتمي البديل:',
-        toolsCalled: [fb.tool],
-        toolResults: [{ tool: fb.tool, data: fb.data }],
+        toolsCalled: fb ? [fb.tool] : toolsCalled,
+        toolResults: fb ? [{ tool: fb.tool, data: fb.data }] : toolResults,
         modelUsed: 'deterministic-fallback',
         status: 'fallback',
+        fallbackReason: sanitizedReason,
       });
     }
   });

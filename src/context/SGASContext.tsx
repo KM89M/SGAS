@@ -109,6 +109,8 @@ interface SGASContextValue {
   t: (typeof translations)['ar'] | (typeof translations)['en'];
   isOnline: boolean;
   authStatus: AuthStatus;
+  authError: { code: string; message: string } | null;
+  clearAuthError: () => void;
   firebaseUser: FirebaseUser | null;
   currentUser: UserAccount | null;
   isDemoMode: boolean;
@@ -173,6 +175,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const [authError, setAuthError] = useState<{ code: string; message: string } | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
@@ -248,6 +251,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthStatus('unauthenticated');
         return;
       }
+      setAuthError(null);
 
       if (!fbUser.emailVerified) {
         setCurrentUser(null);
@@ -391,6 +395,11 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthStatus('authenticated');
       } catch (err) {
         console.error('Auth resolution error:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        setAuthError({
+          code: 'firestore/auth-resolution-failed',
+          message: msg,
+        });
         setAuthStatus('unauthorized');
       }
     });
@@ -610,13 +619,46 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [currentUser, isDemoMode],
   );
 
+  const clearAuthError = useCallback(() => setAuthError(null), []);
+
   const loginWithGoogle = useCallback(async () => {
+    setAuthError(null);
     try {
       setIsDemoMode(false);
       await signInWithPopup(auth, googleProvider);
-      pushToast('success', lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Signed in successfully');
-    } catch (err) {
-      pushToast('error', err instanceof Error ? err.message : 'Sign-in failed');
+    } catch (err: unknown) {
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? String((err as { code?: unknown }).code || '')
+          : 'auth/unknown';
+      const rawMsg = err instanceof Error ? err.message : 'Sign-in failed';
+      let friendlyMsg = rawMsg;
+
+      if (code === 'auth/unauthorized-domain') {
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        friendlyMsg =
+          lang === 'ar'
+            ? `النطاق (${host}) غير مضاف في قائمة النطاقات المصرح بها (Authorized Domains) داخل Firebase Authentication.`
+            : `Domain (${host}) is not listed in Firebase Authentication Authorized Domains.`;
+      } else if (code === 'auth/popup-blocked') {
+        friendlyMsg =
+          lang === 'ar'
+            ? 'المتصفح منع نافذة تسجيل الدخول المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع ثم المحاولة مجدداً.'
+            : 'Sign-in popup was blocked by your browser. Please allow popups for this site and try again.';
+      } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        friendlyMsg =
+          lang === 'ar'
+            ? 'تم إغلاق نافذة تسجيل الدخول قبل إتمام المصادقة.'
+            : 'Sign-in popup was closed before authentication completed.';
+      } else if (code === 'auth/network-request-failed') {
+        friendlyMsg =
+          lang === 'ar'
+            ? 'تعذر الاتصال بخوادم المصادقة. تحقق من اتصال الإنترنت أو مانع الإعلانات.'
+            : 'Network error contacting Firebase Auth. Check your connection or ad blocker.';
+      }
+
+      setAuthError({ code, message: friendlyMsg });
+      pushToast('error', friendlyMsg);
     }
   }, [lang, pushToast]);
 
@@ -705,39 +747,55 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveDepartment = useCallback(
     async (item: Partial<Department> & { code: string; nameAr: string; nameEn: string }) => {
       const isNew = !item.id;
-      const id = item.id || `dept_${sanitizeId(item.code.toLowerCase())}_${Date.now().toString(36)}`;
+      const rawCode = item.code.trim();
+      const nameAr = item.nameAr.trim();
+      if (!rawCode || !nameAr) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال رمز القسم واسم القسم بالعربية.' : 'Please enter department code and Arabic name.');
+      }
+      const id = item.id || `dept_${sanitizeId(rawCode.toLowerCase())}_${Date.now().toString(36)}`;
       await saveEntity('departments', 'departments', id, {
-        code: sanitizeId(item.code).slice(0, 32),
-        nameAr: item.nameAr.trim(),
-        nameEn: item.nameEn.trim(),
-        adminName: item.adminName || '',
+        code: sanitizeId(rawCode).slice(0, 32),
+        nameAr,
+        nameEn: item.nameEn.trim() || nameAr,
+        adminName: item.adminName?.trim() || '',
         adminUid: item.adminUid || '',
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_DEPARTMENT' : 'UPDATE_DEPARTMENT');
     },
-    [saveEntity],
+    [lang, saveEntity],
   );
 
   const saveProgram = useCallback(
     async (item: Partial<AcademicProgram> & { code: string; nameAr: string; nameEn: string; degreeType: AcademicProgram['degreeType']; departmentId: string }) => {
       const isNew = !item.id;
-      const id = item.id || `prog_${sanitizeId(item.code.toLowerCase())}_${Date.now().toString(36)}`;
+      const rawCode = item.code.trim();
+      const nameAr = item.nameAr.trim();
+      if (!rawCode || !nameAr) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال رمز البرنامج واسمه بالعربية.' : 'Please enter program code and Arabic name.');
+      }
+      if (!item.departmentId || !dataset.departments.some((d) => d.id === item.departmentId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء قسم علمي أولاً ثم اختياره للبرنامج.' : 'Please create and select an existing department first.');
+      }
+      const id = item.id || `prog_${sanitizeId(rawCode.toLowerCase())}_${Date.now().toString(36)}`;
       await saveEntity('programs', 'academicPrograms', id, {
-        code: sanitizeId(item.code).slice(0, 32),
-        nameAr: item.nameAr.trim(),
-        nameEn: item.nameEn.trim(),
+        code: sanitizeId(rawCode).slice(0, 32),
+        nameAr,
+        nameEn: item.nameEn.trim() || nameAr,
         degreeType: item.degreeType,
         departmentId: item.departmentId,
         totalRequiredHours: Number(item.totalRequiredHours) || 180,
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_PROGRAM' : 'UPDATE_PROGRAM');
     },
-    [saveEntity],
+    [dataset.departments, lang, saveEntity],
   );
 
   const saveAcademicYear = useCallback(
     async (item: Partial<AcademicYear> & { label: string; startDate: string; endDate: string }) => {
       const isNew = !item.id;
+      if (!item.label.trim() || !item.startDate || !item.endDate) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال مسمى السنة الدراسية وتاريخي البداية والنهاية.' : 'Please enter academic year label and start/end dates.');
+      }
       const id = item.id || `ay_${Date.now().toString(36)}`;
       await saveEntity('academicYears', 'academicYears', id, {
         label: item.label.trim(),
@@ -747,17 +805,21 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_ACADEMIC_YEAR' : 'UPDATE_ACADEMIC_YEAR');
     },
-    [saveEntity],
+    [lang, saveEntity],
   );
 
   const saveSemester = useCallback(
     async (item: Partial<Semester> & { academicYearId: string; nameAr: string; nameEn: string; semesterNumber: number; startDate: string; endDate: string }) => {
       const isNew = !item.id;
+      const nameAr = item.nameAr.trim();
+      if (!nameAr || !item.academicYearId) {
+        throw new Error(lang === 'ar' ? 'يرجى اختيار السنة الدراسية وإدخال اسم الفصل الدراسي.' : 'Please select academic year and enter semester name.');
+      }
       const id = item.id || `sem_${Date.now().toString(36)}`;
       await saveEntity('semesters', 'semesters', id, {
         academicYearId: item.academicYearId,
-        nameAr: item.nameAr.trim(),
-        nameEn: item.nameEn.trim(),
+        nameAr,
+        nameEn: item.nameEn.trim() || nameAr,
         semesterNumber: Number(item.semesterNumber) || 1,
         startDate: item.startDate,
         endDate: item.endDate,
@@ -765,16 +827,20 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_SEMESTER' : 'UPDATE_SEMESTER');
     },
-    [saveEntity],
+    [lang, saveEntity],
   );
 
   const saveCohort = useCallback(
     async (item: Partial<Cohort> & { nameAr: string; nameEn: string; departmentId: string; programId: string; academicYearId: string }) => {
       const isNew = !item.id;
+      const nameAr = item.nameAr.trim();
+      if (!nameAr || !item.departmentId || !item.programId || !item.academicYearId) {
+        throw new Error(lang === 'ar' ? 'يرجى إكمال اسم الدفعة والقسم والبرنامج والسنة الدراسية.' : 'Please complete cohort name, department, program, and academic year.');
+      }
       const id = item.id || `coh_${Date.now().toString(36)}`;
       await saveEntity('cohorts', 'cohorts', id, {
-        nameAr: item.nameAr.trim(),
-        nameEn: item.nameEn.trim(),
+        nameAr,
+        nameEn: item.nameEn.trim() || nameAr,
         departmentId: item.departmentId,
         programId: item.programId,
         academicYearId: item.academicYearId,
@@ -782,38 +848,54 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_COHORT' : 'UPDATE_COHORT');
     },
-    [saveEntity],
+    [lang, saveEntity],
   );
 
   const saveHoliday = useCallback(
     async (item: Partial<Holiday> & { titleAr: string; titleEn: string; startDate: string; endDate: string; type: Holiday['type'] }) => {
       const isNew = !item.id;
+      const titleAr = item.titleAr.trim();
+      if (!titleAr || !item.startDate || !item.endDate) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال عنوان العطلة وتاريخي البداية والنهاية.' : 'Please enter holiday title and start/end dates.');
+      }
       const id = item.id || `hol_${Date.now().toString(36)}`;
       await saveEntity('holidays', 'holidays', id, {
-        titleAr: item.titleAr.trim(),
-        titleEn: item.titleEn.trim(),
+        titleAr,
+        titleEn: item.titleEn.trim() || titleAr,
         startDate: item.startDate,
         endDate: item.endDate,
         type: item.type,
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_HOLIDAY' : 'UPDATE_HOLIDAY');
     },
-    [saveEntity],
+    [lang, saveEntity],
   );
 
   const saveStudent = useCallback(
     async (item: Partial<Student> & { universityId: string; fullNameAr: string; fullNameEn: string; email: string; departmentId: string; programId: string }) => {
       const isNew = !item.id;
-      const cleanUniId = sanitizeId(item.universityId).slice(0, 48);
+      const rawUniId = item.universityId.trim();
+      const fullNameAr = item.fullNameAr.trim();
+      const email = item.email.trim().toLowerCase();
+      if (!rawUniId || !fullNameAr || !email) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال الرقم الجامعي، الاسم بالعربية، والبريد الإلكتروني الجامعي.' : 'Please enter university ID, Arabic name, and email.');
+      }
+      if (!item.departmentId || !dataset.departments.some((d) => d.id === item.departmentId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء القسم العلمي أولاً واختياره للطالب.' : 'Please create and select an existing department first.');
+      }
+      if (!item.programId || !dataset.programs.some((p) => p.id === item.programId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء البرنامج الدراسي أولاً واختياره للطالب.' : 'Please create and select an existing academic program first.');
+      }
+      const cleanUniId = sanitizeId(rawUniId).slice(0, 48);
       if (isNew && dataset.students.some((s) => s.universityId.toLowerCase() === cleanUniId.toLowerCase())) {
         throw new Error(lang === 'ar' ? `الرقم الجامعي مكرر: ${cleanUniId}` : `Duplicate university ID: ${cleanUniId}`);
       }
       const id = item.id || `stu_${cleanUniId}_${Date.now().toString(36)}`;
       await saveEntity('students', 'students', id, {
         universityId: cleanUniId,
-        fullNameAr: item.fullNameAr.trim(),
-        fullNameEn: item.fullNameEn.trim(),
-        email: item.email.trim().toLowerCase(),
+        fullNameAr,
+        fullNameEn: item.fullNameEn.trim() || fullNameAr,
+        email,
         phone: item.phone?.trim() || '',
         departmentId: item.departmentId,
         programId: item.programId,
@@ -825,7 +907,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: item.uid || '',
       }, isNew, isNew ? 'CREATE_STUDENT' : 'UPDATE_STUDENT');
     },
-    [dataset.students, lang, saveEntity],
+    [dataset.departments, dataset.programs, dataset.students, lang, saveEntity],
   );
 
   const bulkSaveStudents = useCallback(
@@ -841,7 +923,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: `stu_${cleanUniId}_${Date.now().toString(36)}_${count}`,
             universityId: cleanUniId,
             fullNameAr: item.fullNameAr.trim(),
-            fullNameEn: item.fullNameEn.trim(),
+            fullNameEn: item.fullNameEn.trim() || item.fullNameAr.trim(),
             email: item.email.trim().toLowerCase(),
             phone: item.phone || '',
             departmentId: item.departmentId,
@@ -862,11 +944,12 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
       for (const item of items) {
         const cleanUniId = sanitizeId(item.universityId).slice(0, 48);
         if (dataset.students.some((s) => s.universityId === cleanUniId)) continue;
+        if (!item.departmentId || !item.programId) continue;
         const id = `stu_${cleanUniId}_${Date.now().toString(36)}_${count}`;
         batch.set(doc(db, 'students', id), {
           universityId: cleanUniId,
           fullNameAr: item.fullNameAr.trim(),
-          fullNameEn: item.fullNameEn.trim(),
+          fullNameEn: item.fullNameEn.trim() || item.fullNameAr.trim(),
           email: item.email.trim().toLowerCase(),
           phone: item.phone || '',
           departmentId: item.departmentId,
@@ -878,6 +961,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         count++;
       }
+      if (count === 0) return 0;
       try {
         await batch.commit();
         await writeAudit('BULK_IMPORT_STUDENTS', 'students', 'batch', undefined, `Imported ${count} students`);
@@ -892,32 +976,53 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveLecturer = useCallback(
     async (item: Partial<Lecturer> & { lecturerCode: string; fullNameAr: string; fullNameEn: string; academicTitleAr: string; email: string; departmentId: string }) => {
       const isNew = !item.id;
-      const code = sanitizeId(item.lecturerCode).slice(0, 48);
+      const rawCode = item.lecturerCode.trim();
+      const fullNameAr = item.fullNameAr.trim();
+      const academicTitleAr = item.academicTitleAr.trim() || 'مدرس';
+      const email = item.email.trim().toLowerCase();
+      if (!rawCode || !fullNameAr || !email) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال رمز التدريسي، الاسم بالعربية، والبريد الإلكتروني الجامعي.' : 'Please enter lecturer code, Arabic name, and email.');
+      }
+      if (!item.departmentId || !dataset.departments.some((d) => d.id === item.departmentId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء القسم العلمي أولاً ثم اختياره للتدريسي.' : 'Please create and select an existing department first.');
+      }
+      const code = sanitizeId(rawCode).slice(0, 48);
       const id = item.id || `lec_${code}_${Date.now().toString(36)}`;
       await saveEntity('lecturers', 'lecturers', id, {
         lecturerCode: code,
-        fullNameAr: item.fullNameAr.trim(),
-        fullNameEn: item.fullNameEn.trim(),
-        academicTitleAr: item.academicTitleAr.trim(),
+        fullNameAr,
+        fullNameEn: item.fullNameEn.trim() || fullNameAr,
+        academicTitleAr,
         academicTitleEn: item.academicTitleEn?.trim() || '',
-        email: item.email.trim().toLowerCase(),
+        email,
         departmentId: item.departmentId,
         accountStatus: item.accountStatus || 'active',
         uid: item.uid || '',
       }, isNew, isNew ? 'CREATE_LECTURER' : 'UPDATE_LECTURER');
     },
-    [saveEntity],
+    [dataset.departments, lang, saveEntity],
   );
 
   const saveSubject = useCallback(
     async (item: Partial<Subject> & { code: string; nameAr: string; nameEn: string; departmentId: string; programId: string }) => {
       const isNew = !item.id;
-      const code = sanitizeId(item.code).slice(0, 32);
+      const rawCode = item.code.trim();
+      const nameAr = item.nameAr.trim();
+      if (!rawCode || !nameAr) {
+        throw new Error(lang === 'ar' ? 'يرجى إدخال رمز المادة واسمها بالعربية.' : 'Please enter subject code and Arabic name.');
+      }
+      if (!item.departmentId || !dataset.departments.some((d) => d.id === item.departmentId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء القسم العلمي أولاً ثم اختياره للمادة.' : 'Please create and select an existing department first.');
+      }
+      if (!item.programId || !dataset.programs.some((p) => p.id === item.programId)) {
+        throw new Error(lang === 'ar' ? 'يرجى إنشاء البرنامج الدراسي أولاً ثم اختياره للمادة.' : 'Please create and select an existing program first.');
+      }
+      const code = sanitizeId(rawCode).slice(0, 32);
       const id = item.id || `sub_${code}_${Date.now().toString(36)}`;
       await saveEntity('subjects', 'subjects', id, {
         code,
-        nameAr: item.nameAr.trim(),
-        nameEn: item.nameEn.trim(),
+        nameAr,
+        nameEn: item.nameEn.trim() || nameAr,
         departmentId: item.departmentId,
         programId: item.programId,
         academicYearId: item.academicYearId || '',
@@ -930,7 +1035,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActive: item.isActive ?? true,
       }, isNew, isNew ? 'CREATE_SUBJECT' : 'UPDATE_SUBJECT');
     },
-    [saveEntity],
+    [dataset.departments, dataset.programs, lang, saveEntity],
   );
 
   const saveEnrollment = useCallback(
@@ -954,6 +1059,9 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveLecture = useCallback(
     async (item: Partial<Lecture> & { departmentId: string; programId: string; subjectId: string; lecturerId: string; lectureDate: string; startTime: string; endTime: string; classroom: string }) => {
       const isNew = !item.id;
+      if (!item.subjectId || !item.lecturerId || !item.departmentId || !item.programId || !item.classroom.trim()) {
+        throw new Error(lang === 'ar' ? 'يرجى تحديد المادة والتدريسي والقسم والبرنامج والقاعة الدراسية.' : 'Please select subject, lecturer, department, program, and classroom.');
+      }
       const id = item.id || `lec_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
       const sub = dataset.subjects.find((s) => s.id === item.subjectId);
       const lec = dataset.lecturers.find((l) => l.id === item.lecturerId);
@@ -988,7 +1096,7 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
         recurrenceGroupId: item.recurrenceGroupId || '',
       }, isNew, isNew ? 'CREATE_LECTURE' : 'UPDATE_LECTURE');
     },
-    [activePolicy.academicHourMinutes, dataset.lecturers, dataset.subjects, saveEntity],
+    [activePolicy.academicHourMinutes, dataset.lecturers, dataset.subjects, lang, saveEntity],
   );
 
   const bulkCreateLectures = useCallback(
@@ -1694,6 +1802,8 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
       t,
       isOnline,
       authStatus,
+      authError,
+      clearAuthError,
       firebaseUser,
       currentUser,
       isDemoMode,
@@ -1746,6 +1856,8 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
       t,
       isOnline,
       authStatus,
+      authError,
+      clearAuthError,
       firebaseUser,
       currentUser,
       isDemoMode,

@@ -138,11 +138,11 @@ service cloud.firestore {
     }
 
     function isValidDepartment(data) {
-      return data.keys().hasAll(['code', 'nameAr', 'nameEn', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['code', 'nameAr', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['code', 'nameAr', 'nameEn', 'adminUid', 'adminName', 'isActive', 'createdAt', 'updatedAt'])
         && isValidId(data.code) && data.code.size() <= 32
         && isNonEmptyString(data.nameAr, 160)
-        && isNonEmptyString(data.nameEn, 160)
+        && isOptionalString(data, 'nameEn', 160)
         && isOptionalString(data, 'adminUid', 128)
         && isOptionalString(data, 'adminName', 140)
         && data.isActive is bool
@@ -151,11 +151,11 @@ service cloud.firestore {
     }
 
     function isValidAcademicProgram(data) {
-      return data.keys().hasAll(['code', 'nameAr', 'nameEn', 'degreeType', 'departmentId', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['code', 'nameAr', 'degreeType', 'departmentId', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['code', 'nameAr', 'nameEn', 'degreeType', 'departmentId', 'totalRequiredHours', 'isActive', 'createdAt', 'updatedAt'])
         && isValidId(data.code) && data.code.size() <= 32
         && isNonEmptyString(data.nameAr, 160)
-        && isNonEmptyString(data.nameEn, 160)
+        && isOptionalString(data, 'nameEn', 160)
         && data.degreeType in ['masters', 'phd', 'diploma']
         && isValidId(data.departmentId)
         && (!('totalRequiredHours' in data) || (data.totalRequiredHours is number && data.totalRequiredHours >= 0 && data.totalRequiredHours <= 1000))
@@ -177,11 +177,11 @@ service cloud.firestore {
     }
 
     function isValidSemester(data) {
-      return data.keys().hasAll(['academicYearId', 'nameAr', 'nameEn', 'semesterNumber', 'startDate', 'endDate', 'isCurrent', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['academicYearId', 'nameAr', 'semesterNumber', 'startDate', 'endDate', 'isCurrent', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['academicYearId', 'nameAr', 'nameEn', 'semesterNumber', 'startDate', 'endDate', 'isCurrent', 'isActive', 'createdAt', 'updatedAt'])
         && isValidId(data.academicYearId)
         && isNonEmptyString(data.nameAr, 100)
-        && isNonEmptyString(data.nameEn, 100)
+        && isOptionalString(data, 'nameEn', 100)
         && data.semesterNumber is number && data.semesterNumber >= 1 && data.semesterNumber <= 4
         && isNonEmptyString(data.startDate, 20)
         && isNonEmptyString(data.endDate, 20)
@@ -192,10 +192,10 @@ service cloud.firestore {
     }
 
     function isValidCohort(data) {
-      return data.keys().hasAll(['nameAr', 'nameEn', 'departmentId', 'programId', 'academicYearId', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['nameAr', 'departmentId', 'programId', 'academicYearId', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['nameAr', 'nameEn', 'departmentId', 'programId', 'academicYearId', 'admissionYear', 'isActive', 'createdAt', 'updatedAt'])
         && isNonEmptyString(data.nameAr, 120)
-        && isNonEmptyString(data.nameEn, 120)
+        && isOptionalString(data, 'nameEn', 120)
         && isValidId(data.departmentId)
         && isValidId(data.programId)
         && isValidId(data.academicYearId)
@@ -206,11 +206,11 @@ service cloud.firestore {
     }
 
     function isValidStudent(data) {
-      return data.keys().hasAll(['universityId', 'fullNameAr', 'fullNameEn', 'email', 'departmentId', 'programId', 'enrollmentStatus', 'accountStatus', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['universityId', 'fullNameAr', 'email', 'departmentId', 'programId', 'enrollmentStatus', 'accountStatus', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['universityId', 'fullNameAr', 'fullNameEn', 'email', 'phone', 'departmentId', 'programId', 'academicYearId', 'semesterId', 'cohortId', 'enrollmentStatus', 'accountStatus', 'uid', 'createdAt', 'updatedAt'])
         && isValidId(data.universityId) && data.universityId.size() <= 48
         && isNonEmptyString(data.fullNameAr, 160)
-        && isNonEmptyString(data.fullNameEn, 160)
+        && isOptionalString(data, 'fullNameEn', 160)
         && isNonEmptyString(data.email, 160)
         && isOptionalString(data, 'phone', 32)
         && isValidId(data.departmentId)
@@ -226,11 +226,11 @@ service cloud.firestore {
     }
 
     function isValidLecturer(data) {
-      return data.keys().hasAll(['lecturerCode', 'fullNameAr', 'fullNameEn', 'academicTitleAr', 'email', 'departmentId', 'accountStatus', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['lecturerCode', 'fullNameAr', 'academicTitleAr', 'email', 'departmentId', 'accountStatus', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['lecturerCode', 'fullNameAr', 'fullNameEn', 'academicTitleAr', 'academicTitleEn', 'email', 'departmentId', 'accountStatus', 'uid', 'createdAt', 'updatedAt'])
         && isValidId(data.lecturerCode) && data.lecturerCode.size() <= 48
         && isNonEmptyString(data.fullNameAr, 160)
-        && isNonEmptyString(data.fullNameEn, 160)
+        && isOptionalString(data, 'fullNameEn', 160)
         && isNonEmptyString(data.academicTitleAr, 80)
         && isOptionalString(data, 'academicTitleEn', 80)
         && isNonEmptyString(data.email, 160)
@@ -242,11 +242,11 @@ service cloud.firestore {
     }
 
     function isValidSubject(data) {
-      return data.keys().hasAll(['code', 'nameAr', 'nameEn', 'departmentId', 'programId', 'subjectType', 'weeklyHours', 'totalPlannedHours', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['code', 'nameAr', 'departmentId', 'programId', 'subjectType', 'weeklyHours', 'totalPlannedHours', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['code', 'nameAr', 'nameEn', 'departmentId', 'programId', 'academicYearId', 'semesterId', 'subjectType', 'weeklyHours', 'totalPlannedHours', 'lecturerIds', 'lecturerUids', 'isActive', 'createdAt', 'updatedAt'])
         && isValidId(data.code) && data.code.size() <= 32
         && isNonEmptyString(data.nameAr, 160)
-        && isNonEmptyString(data.nameEn, 160)
+        && isOptionalString(data, 'nameEn', 160)
         && isValidId(data.departmentId)
         && isValidId(data.programId)
         && isOptionalString(data, 'academicYearId', 128)
@@ -308,10 +308,10 @@ service cloud.firestore {
     }
 
     function isValidHoliday(data) {
-      return data.keys().hasAll(['titleAr', 'titleEn', 'startDate', 'endDate', 'type', 'isActive', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['titleAr', 'startDate', 'endDate', 'type', 'isActive', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['titleAr', 'titleEn', 'startDate', 'endDate', 'type', 'isActive', 'createdAt', 'updatedAt'])
         && isNonEmptyString(data.titleAr, 140)
-        && isNonEmptyString(data.titleEn, 140)
+        && isOptionalString(data, 'titleEn', 140)
         && isNonEmptyString(data.startDate, 20)
         && isNonEmptyString(data.endDate, 20)
         && data.type in ['official', 'religious', 'academic']

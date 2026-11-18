@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { signQrPayload, verifyQrToken } from '../server';
+import http from 'node:http';
+import { createApiApp, signQrPayload, verifyQrToken } from '../server';
 import { getAuthorizedScope, runDeterministicTool, runNonAiFallbackQuery } from '../server/analyticsEngine';
 import {
   calculateStudentAttendance,
@@ -295,6 +296,67 @@ describe('SGAS Official University PDF Export Formatting', () => {
     assert.ok(html.includes('صفحة 1 من 1'));
     assert.ok(!html.includes('<script>alert(1)</script>'));
     assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  });
+});
+
+describe('SGAS Multi-turn AI Assistant API', () => {
+  it('handles consecutive turns cleanly without stalling or rejecting valid history', async () => {
+    const app = createApiApp();
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const addr = server.address();
+    assert.ok(addr && typeof addr === 'object');
+    const baseUrl = `http://127.0.0.1:${addr.port}`;
+
+    try {
+      const dataset = createIsolatedDemoDataset();
+      const postTurn = async (message: string, history: Array<{ role: 'user' | 'model'; text: string }>) => {
+        const resp = await fetch(`${baseUrl}/api/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer DEMO_SANDBOX_super_admin',
+          },
+          body: JSON.stringify({
+            message,
+            history,
+            role: 'super_admin',
+            dataset,
+            lang: 'ar',
+            deterministicOnly: true,
+          }),
+        });
+        assert.equal(resp.status, 200);
+        return (await resp.json()) as {
+          answer: string;
+          toolsCalled: string[];
+          modelUsed: string;
+          status: string;
+        };
+      };
+
+      const turn1 = await postTurn('كم عدد الطلبة الحاضرين اليوم؟', [{ role: 'model', text: 'welcome' }]);
+      assert.equal(turn1.status, 'success');
+      assert.deepEqual(turn1.toolsCalled, ['get_daily_attendance']);
+
+      const turn2 = await postTurn('ما هو معدل الحضور لكل قسم علمي؟', [
+        { role: 'user', text: 'كم عدد الطلبة الحاضرين اليوم؟' },
+        { role: 'model', text: turn1.answer },
+      ]);
+      assert.equal(turn2.status, 'success');
+      assert.deepEqual(turn2.toolsCalled, ['get_department_statistics']);
+
+      const turn3 = await postTurn('من هم الطلبة الذين تجاوزوا الغياب؟', [
+        { role: 'user', text: 'كم عدد الطلبة الحاضرين اليوم؟' },
+        { role: 'model', text: turn1.answer },
+        { role: 'user', text: 'ما هو معدل الحضور لكل قسم علمي؟' },
+        { role: 'model', text: turn2.answer },
+      ]);
+      assert.equal(turn3.status, 'success');
+      assert.deepEqual(turn3.toolsCalled, ['get_absence_threshold_students']);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+    }
   });
 });
 
