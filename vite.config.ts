@@ -6,8 +6,9 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
-  const rawBase = process.env.VITE_BASE_PATH || '/';
+  const rawBase = process.env.VITE_BASE_PATH || './';
   const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+  const manifestBase = base === './' ? './' : base;
 
   return {
     base,
@@ -19,15 +20,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
-          id: base,
+          id: manifestBase,
           name: 'SGAS - نظام إدارة حضور طلبة الدراسات العليا الذكي',
           short_name: 'SGAS',
           description: 'الجامعة التقنية الوسطى - الكلية التقنية الإدارية – بغداد - شعبة الدراسات العليا',
           theme_color: '#1565C0',
           background_color: '#F5F9FF',
           display: 'standalone',
-          start_url: base,
-          scope: base,
+          start_url: manifestBase,
+          scope: manifestBase,
           icons: [
             {
               src: `${base}pwa-192x192.png`,
