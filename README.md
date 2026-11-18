@@ -27,6 +27,14 @@
    - `GEMINI_API_KEY`: your Gemini API key (optional; deterministic fallback works even without it).
 4. Add your `https://your-app.vercel.app` domain in **Firebase Console → Authentication → Settings → Authorized domains**.
 
+### Option 4: GitHub Pages Free Static Hosting (`.github/workflows/deploy.yml` included)
+> **Why deploying from raw `main` branch gives a white screen:** GitHub Pages cannot run raw `.tsx` files (`<script src="/src/main.tsx">`) and serves repos under `/<repo-name>/` instead of `/`. You must build via **GitHub Actions**:
+1. Push this repository (including `.github/workflows/deploy.yml`) to `main`.
+2. Open **GitHub Repo → Settings → Pages → Build and deployment → Source** and choose **GitHub Actions** (NOT "Deploy from a branch").
+3. Wait for the **Deploy SGAS to GitHub Pages** workflow to finish; it sets `VITE_BASE_PATH` automatically for your repo URL (`https://<user>.github.io/<repo>/`).
+4. Add `https://<user>.github.io` inside **Firebase Console → Authentication → Settings → Authorized domains**.
+5. *Note*: GitHub Pages hosts the frontend, Firebase Auth/Firestore, Reports/PDF/Excel, and Demo Mode. Server `/api/*` endpoints (cryptographic QR signing and Gemini AI) require a free Node host like **Render Free** (`render.yaml`) or **Vercel Hobby** (`vercel.json`).
+
 ---
 
 ## Architecture & Core Capabilities
