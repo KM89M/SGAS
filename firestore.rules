@@ -716,7 +716,7 @@ service cloud.firestore {
         existing().studentUid == request.auth.uid || existing().lecturerUid == request.auth.uid || isDeptOrHigherAdmin(existing().departmentId)
       );
       allow list: if isVerifiedUser() && (
-        resource.data.studentUid == request.auth.uid || resource.data.lecturerUid == request.auth.uid || isSuperOrPgAdmin()
+        resource.data.studentUid == request.auth.uid || resource.data.lecturerUid == request.auth.uid || isDeptOrHigherAdmin(resource.data.departmentId)
       );
       allow create: if isValidId(recordId) && isVerifiedUser() && isValidAttendanceRecord(incoming()) && isValidTimestampCreate(incoming())
         && exists(/databases/$(database)/documents/attendanceSessions/$(incoming().sessionId))
@@ -804,7 +804,7 @@ service cloud.firestore {
     // 23. System Settings
     match /systemSettings/{settingId} {
       allow get: if isValidId(settingId) && isVerifiedUser();
-      allow list: if isVerifiedUser() && resource.data.timezone is string;
+      allow list: if isVerifiedUser() && (resource.data.timezone != '' || isSuperOrPgAdmin());
       allow create: if isValidId(settingId) && isSuperOrPgAdmin() && isValidSystemSetting(incoming()) && isValidTimestampCreate(incoming());
       allow update: if isValidId(settingId) && isSuperOrPgAdmin() && isValidSystemSetting(incoming()) && isValidTimestampUpdate(incoming(), existing());
       allow delete: if isValidId(settingId) && isBootstrappedAdmin();

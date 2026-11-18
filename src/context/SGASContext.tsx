@@ -466,10 +466,19 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
       query(collection(db, 'attendancePolicies'), where('academicHourMinutes', '>=', 30)),
       (policies) => setProdDataset((p) => ({ ...p, policies })),
     );
-    attach<SystemSetting>(
-      'systemSettings',
-      query(collection(db, 'systemSettings'), where('timezone', '!=', '')),
-      (items) => setProdDataset((p) => ({ ...p, settings: items[0] || null })),
+    unsubs.push(
+      onSnapshot(
+        doc(db, 'systemSettings', 'default'),
+        (snap) => {
+          setProdDataset((p) => ({
+            ...p,
+            settings: snap.exists() ? ({ id: snap.id, ...(snap.data() as Record<string, unknown>) } as SystemSetting) : null,
+          }));
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, 'systemSettings/default');
+        },
+      ),
     );
 
     // PII-sensitive collections scoped by role
@@ -514,9 +523,11 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'attendanceRecords',
       isAdminLevel
         ? collection(db, 'attendanceRecords')
-        : role === 'lecturer'
-          ? query(collection(db, 'attendanceRecords'), where('lecturerUid', '==', currentUser.uid))
-          : query(collection(db, 'attendanceRecords'), where('studentUid', '==', currentUser.uid)),
+        : role === 'dept_admin' && currentUser.departmentId
+          ? query(collection(db, 'attendanceRecords'), where('departmentId', '==', currentUser.departmentId))
+          : role === 'lecturer'
+            ? query(collection(db, 'attendanceRecords'), where('lecturerUid', '==', currentUser.uid))
+            : query(collection(db, 'attendanceRecords'), where('studentUid', '==', currentUser.uid)),
       (records) => setProdDataset((p) => ({ ...p, records })),
     );
 
@@ -996,7 +1007,11 @@ export const SGASProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (lectureId: string, status: LectureStatus, extra?: Partial<Lecture>, reason?: string) => {
       const existing = dataset.lectures.find((l) => l.id === lectureId);
       if (!existing) return;
-      await saveEntity('lectures', 'lectures', lectureId, { ...existing, ...extra, status }, false, `LECTURE_STATUS_${status.toUpperCase()}`);
+      const cleanExtra = { ...(extra || {}) };
+      delete (cleanExtra as Record<string, unknown>).id;
+      delete (cleanExtra as Record<string, unknown>).createdAt;
+      delete (cleanExtra as Record<string, unknown>).updatedAt;
+      await saveEntity('lectures', 'lectures', lectureId, { ...cleanExtra, status }, false, `LECTURE_STATUS_${status.toUpperCase()}`);
       if (reason) {
         await writeAudit('LECTURE_RESCHEDULE_OR_CANCEL', 'lectures', lectureId, existing.status, status, reason);
       }
