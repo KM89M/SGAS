@@ -10,6 +10,11 @@ import {
 } from '../src/lib/attendanceMath';
 import { createIsolatedDemoDataset } from '../src/lib/demoData';
 import { AttendanceRecord, Lecture, Student } from '../src/types/sgas';
+import {
+  buildOfficialDocumentRef,
+  buildOfficialReportHtmlPage,
+  paginateReportRows,
+} from '../src/lib/exportUtils';
 
 describe('SGAS Cryptographic QR Signing & Verification', () => {
   it('verifies a freshly signed QR token and computes sha256 tokenHash', () => {
@@ -239,3 +244,57 @@ describe('SGAS Schedule Conflict Detection & RBAC Scope', () => {
     assert.equal(fb.tool, 'get_absence_threshold_students');
   });
 });
+
+describe('SGAS Official University PDF Export Formatting', () => {
+  it('paginates rows across first and subsequent pages without slicing records', () => {
+    assert.deepEqual(paginateReportRows([], 12, 18), [[]]);
+    const rows = Array.from({ length: 25 }, (_, i) => ({ id: i + 1 }));
+    const pages = paginateReportRows(rows, 12, 18);
+    assert.equal(pages.length, 2);
+    assert.equal(pages[0].length, 12);
+    assert.equal(pages[1].length, 13);
+    assert.equal(pages[1][0].id, 13);
+  });
+
+  it('generates structured official document references matching MTU-TCM convention', () => {
+    const ref = buildOfficialDocumentRef('student', '2026-11-18');
+    assert.match(ref, /^MTU-TCM-STUDEN-20261118-[A-Z0-9]{4}$/);
+  });
+
+  it('builds official RTL university documentation HTML with letterhead, remarks, signatures, and XSS escaping', () => {
+    const html = buildOfficialReportHtmlPage(
+      {
+        filename: 'test_report',
+        titleAr: 'تقرير الحضور الرسمي',
+        titleEn: 'Official Attendance Report',
+        periodLabel: '2026-11-01 -> 2026-11-18',
+        appliedFilters: 'الكل',
+        lang: 'ar',
+        settings: null,
+        summaryItems: [{ label: 'الطلبة', value: '12' }],
+        columns: [
+          { key: 'student', label: 'الطالب' },
+          { key: 'pct', label: 'النسبة' },
+        ],
+        rows: [{ student: '<script>alert(1)</script>', pct: '95%' }],
+        documentRef: 'MTU-TCM-STUDEN-20261118-ABCD',
+        officialNotes: 'وثيقة معتمدة لأغراض الدراسات العليا',
+        generatedBy: 'شعبة الدراسات العليا',
+        includeSignatures: true,
+      },
+      [{ student: '<script>alert(1)</script>', pct: '95%' }],
+      0,
+      1,
+      0,
+    );
+    assert.ok(html.includes('direction:rtl'));
+    assert.ok(html.includes('الجامعة التقنية الوسطى'));
+    assert.ok(html.includes('MTU-TCM-STUDEN-20261118-ABCD'));
+    assert.ok(html.includes('وثيقة معتمدة لأغراض الدراسات العليا'));
+    assert.ok(html.includes('مكان الختم الرسمي للكلية / الشعبة'));
+    assert.ok(html.includes('صفحة 1 من 1'));
+    assert.ok(!html.includes('<script>alert(1)</script>'));
+    assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+  });
+});
+

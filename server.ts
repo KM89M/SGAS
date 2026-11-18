@@ -2,19 +2,20 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import express from 'express';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { FunctionDeclaration, GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, type FunctionDeclaration } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
-import { runDeterministicTool, runNonAiFallbackQuery, ScopedContext } from './server/analyticsEngine';
-import { getBaghdadDateString, getBaghdadTimeString } from './src/lib/attendanceMath';
-import { SGASDataset, UserRole } from './src/types/sgas';
+import { runDeterministicTool, runNonAiFallbackQuery, type ScopedContext } from './server/analyticsEngine.ts';
+import { getBaghdadDateString, getBaghdadTimeString } from './src/lib/attendanceMath.ts';
+import type { SGASDataset, UserRole } from './src/types/sgas.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const firebaseConfigPath = path.resolve(__dirname, 'firebase-applet-config.json');
+const firebaseConfigPath = fs.existsSync(path.resolve(__dirname, 'firebase-applet-config.json'))
+  ? path.resolve(__dirname, 'firebase-applet-config.json')
+  : path.resolve(process.cwd(), 'firebase-applet-config.json');
 const firebaseConfig = fs.existsSync(firebaseConfigPath)
   ? JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf-8'))
   : { projectId: '' };
@@ -23,7 +24,7 @@ const FIREBASE_JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
 );
 
-// Server-side cryptographic secret for HMAC-SHA256 QR tokens (ephemeral fallback in dev if env unset)
+// Server-side cryptographic secret for HMAC-SHA256 QR tokens (set QR_HMAC_SECRET in production env)
 const QR_HMAC_SECRET = process.env.QR_HMAC_SECRET || crypto.randomBytes(32).toString('hex');
 
 // Sliding window rate limiter for QR verification & AI calls
@@ -211,7 +212,7 @@ const GEMINI_TOOLS: FunctionDeclaration[] = [
   },
 ];
 
-async function createServer() {
+export function createApiApp() {
   const app = express();
   app.use(express.json({ limit: '4mb' }));
 
@@ -468,7 +469,14 @@ Rules:
     }
   });
 
+  return app;
+}
+
+async function createServer() {
+  const app = createApiApp();
+
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

@@ -1,8 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { FileSpreadsheet, FileText, Download, Printer, Filter } from 'lucide-react';
+import { FileSpreadsheet, FileText, Download, Printer, Filter, Eye, X } from 'lucide-react';
 import { useSGAS } from '../context/SGASContext';
 import { calculateStudentAttendance, getBaghdadDateString } from '../lib/attendanceMath';
-import { exportInstitutionalPdf, exportToCsv, exportToExcel } from '../lib/exportUtils';
+import {
+  buildOfficialDocumentRef,
+  buildOfficialReportHtmlPage,
+  exportInstitutionalPdf,
+  exportToCsv,
+  exportToExcel,
+  InstitutionalReportConfig,
+} from '../lib/exportUtils';
 
 type ReportTypeKey =
   | 'daily'
@@ -45,7 +52,14 @@ export const ReportsCenter: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Official PDF Documentation Options
+  const [pdfOrientation, setPdfOrientation] = useState<'auto' | 'portrait' | 'landscape'>('auto');
+  const [documentRef, setDocumentRef] = useState(() => buildOfficialDocumentRef('student', today));
+  const [officialNotes, setOfficialNotes] = useState('');
+  const [includeSignatures, setIncludeSignatures] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const reportTypes: { key: ReportTypeKey; ar: string; en: string }[] = [
     { key: 'daily', ar: 'تقرير الحضور اليومي', en: 'Daily Attendance Report' },
@@ -120,9 +134,11 @@ export const ReportsCenter: React.FC = () => {
         { key: 'name', label: isAr ? 'القسم العلمي' : 'Department' },
         { key: 'students', label: isAr ? 'عدد الطلبة' : 'Students' },
         { key: 'lectures', label: isAr ? 'المحاضرات' : 'Lectures' },
-        { key: 'attendedHours', label: isAr ? 'ساعات الحضور' : 'Attended Hrs' },
+        { key: 'attendedHours', label: isAr ? 'الساعات المنجزة' : 'Completed Hrs' },
         { key: 'rate', label: isAr ? 'نسبة الحضور %' : 'Rate %' },
       ];
+      let totalHours = 0;
+      let rateSum = 0;
       const rows = dataset.departments
         .filter((d) => !deptId || d.id === deptId)
         .map((d) => {
@@ -132,6 +148,8 @@ export const ReportsCenter: React.FC = () => {
           const pres = dRecs.filter((r) => r.status === 'present' || r.status === 'late').length;
           const rate = dRecs.length > 0 ? Number(((pres / dRecs.length) * 100).toFixed(1)) : 0;
           const hrs = dLecs.filter((l) => l.status === 'approved' || l.status === 'completed').reduce((a, b) => a + (b.academicCreditHours || 1), 0);
+          totalHours += hrs;
+          rateSum += rate;
           return {
             code: d.code,
             name: isAr ? d.nameAr : d.nameEn,
@@ -141,7 +159,16 @@ export const ReportsCenter: React.FC = () => {
             rate: `${rate}%`,
           };
         });
-      return { columns, rows, attendedHours: 0, absentHours: 0, avgRate: 0 };
+      return {
+        columns,
+        rows,
+        summaryItems: [
+          { label: isAr ? 'عدد الأقسام' : 'Departments', value: String(rows.length) },
+          { label: isAr ? 'إجمالي الطلبة' : 'Total Students', value: String(filteredStudents.length) },
+          { label: isAr ? 'الساعات المنجزة' : 'Completed Hrs', value: String(Number(totalHours.toFixed(1))) },
+          { label: isAr ? 'متوسط الحضور' : 'Avg Rate', value: `${rows.length ? Number((rateSum / rows.length).toFixed(1)) : 0}%` },
+        ],
+      };
     }
 
     if (reportType === 'subject' || reportType === 'academic_hours') {
@@ -153,6 +180,9 @@ export const ReportsCenter: React.FC = () => {
         { key: 'approvedLectures', label: isAr ? 'المحاضرات المعتمدة' : 'Approved Lectures' },
         { key: 'rate', label: isAr ? 'نسبة الحضور' : 'Attendance %' },
       ];
+      let plannedSum = 0;
+      let completedSum = 0;
+      let lecCount = 0;
       const rows = dataset.subjects
         .filter((s) => (!deptId || s.departmentId === deptId) && (!programId || s.programId === programId) && (!subjectId || s.id === subjectId))
         .map((sub) => {
@@ -162,6 +192,9 @@ export const ReportsCenter: React.FC = () => {
           const sRecs = scopedRecords.filter((r) => r.subjectId === sub.id && r.isApproved);
           const pres = sRecs.filter((r) => r.status === 'present' || r.status === 'late').length;
           const rate = sRecs.length > 0 ? `${((pres / sRecs.length) * 100).toFixed(1)}%` : '0%';
+          plannedSum += sub.totalPlannedHours || 0;
+          completedSum += hrs;
+          lecCount += completed.length;
           return {
             code: sub.code,
             name: isAr ? sub.nameAr : sub.nameEn,
@@ -171,7 +204,16 @@ export const ReportsCenter: React.FC = () => {
             rate,
           };
         });
-      return { columns, rows, attendedHours: 0, absentHours: 0, avgRate: 0 };
+      return {
+        columns,
+        rows,
+        summaryItems: [
+          { label: isAr ? 'عدد المواد' : 'Subjects', value: String(rows.length) },
+          { label: isAr ? 'الساعات المخططة' : 'Planned Hrs', value: String(plannedSum) },
+          { label: isAr ? 'الساعات المنجزة' : 'Completed Hrs', value: String(Number(completedSum.toFixed(1))) },
+          { label: isAr ? 'المحاضرات المعتمدة' : 'Approved Lectures', value: String(lecCount) },
+        ],
+      };
     }
 
     if (reportType === 'lecturer') {
@@ -183,6 +225,8 @@ export const ReportsCenter: React.FC = () => {
         { key: 'pending', label: isAr ? 'بانتظار الاعتماد' : 'Pending' },
         { key: 'hours', label: isAr ? 'الساعات المنجزة' : 'Delivered Hrs' },
       ];
+      let deliveredSum = 0;
+      let pendingSum = 0;
       const rows = dataset.lecturers
         .filter((l) => (!deptId || l.departmentId === deptId) && (!lecturerId || l.id === lecturerId))
         .map((lec) => {
@@ -190,6 +234,8 @@ export const ReportsCenter: React.FC = () => {
           const app = lLecs.filter((x) => x.status === 'approved' || x.status === 'completed');
           const pen = lLecs.filter((x) => x.status === 'pending_approval' || x.status === 'attendance_open');
           const hrs = app.reduce((a, b) => a + (b.academicCreditHours || 1), 0);
+          deliveredSum += hrs;
+          pendingSum += pen.length;
           return {
             code: lec.lecturerCode,
             name: `${lec.academicTitleAr} ${isAr ? lec.fullNameAr : lec.fullNameEn}`,
@@ -199,7 +245,15 @@ export const ReportsCenter: React.FC = () => {
             hours: Number(hrs.toFixed(2)),
           };
         });
-      return { columns, rows, attendedHours: 0, absentHours: 0, avgRate: 0 };
+      return {
+        columns,
+        rows,
+        summaryItems: [
+          { label: isAr ? 'التدريسيون' : 'Lecturers', value: String(rows.length) },
+          { label: isAr ? 'إجمالي الساعات المنجزة' : 'Delivered Hrs', value: String(Number(deliveredSum.toFixed(1))) },
+          { label: isAr ? 'بانتظار الاعتماد' : 'Pending Approvals', value: String(pendingSum) },
+        ],
+      };
     }
 
     if (reportType === 'completed_lectures' || reportType === 'pending_approvals') {
@@ -216,6 +270,7 @@ export const ReportsCenter: React.FC = () => {
         { key: 'hours', label: t.common.hours },
         { key: 'status', label: t.common.status },
       ];
+      const totalHrs = targetLecs.reduce((a, b) => a + (b.academicCreditHours || 1), 0);
       const rows = targetLecs.map((l) => ({
         date: l.lectureDate,
         time: `${l.startTime}-${l.endTime}`,
@@ -224,7 +279,14 @@ export const ReportsCenter: React.FC = () => {
         hours: l.academicCreditHours,
         status: t.statuses[l.status],
       }));
-      return { columns, rows, attendedHours: 0, absentHours: 0, avgRate: 0 };
+      return {
+        columns,
+        rows,
+        summaryItems: [
+          { label: isAr ? 'عدد المحاضرات' : 'Lectures Count', value: String(rows.length) },
+          { label: isAr ? 'مجموع الساعات' : 'Total Hours', value: String(Number(totalHrs.toFixed(1))) },
+        ],
+      };
     }
 
     if (reportType === 'corrections') {
@@ -235,19 +297,26 @@ export const ReportsCenter: React.FC = () => {
         { key: 'reason', label: isAr ? 'السبب' : 'Reason' },
         { key: 'status', label: t.common.status },
       ];
-      const rows = dataset.corrections
-        .filter((c) => !deptId || c.departmentId === deptId)
-        .map((c) => ({
-          student: c.studentNameAr || c.studentId,
-          current: c.currentStatus,
-          requested: t.statuses[c.requestedStatus],
-          reason: c.reason,
-          status: t.statuses[c.status],
-        }));
-      return { columns, rows, attendedHours: 0, absentHours: 0, avgRate: 0 };
+      const filteredCorr = dataset.corrections.filter((c) => !deptId || c.departmentId === deptId);
+      const rows = filteredCorr.map((c) => ({
+        student: c.studentNameAr || c.studentId,
+        current: c.currentStatus,
+        requested: t.statuses[c.requestedStatus],
+        reason: c.reason,
+        status: t.statuses[c.status],
+      }));
+      return {
+        columns,
+        rows,
+        summaryItems: [
+          { label: isAr ? 'إجمالي الطلبات' : 'Total Requests', value: String(rows.length) },
+          { label: isAr ? 'المقبولة' : 'Approved', value: String(filteredCorr.filter((c) => c.status === 'approved').length) },
+          { label: isAr ? 'قيد المراجعة' : 'Pending', value: String(filteredCorr.filter((c) => c.status === 'pending').length) },
+        ],
+      };
     }
 
-    // Student-level comprehensive calculation reports (student, masters, phd, absence, exceeding_limit, daily/weekly/biweekly/monthly)
+    // Student-level comprehensive calculation reports
     const columns = [
       { key: 'universityId', label: isAr ? 'الرقم الجامعي' : 'Univ. ID' },
       { key: 'name', label: isAr ? 'اسم الطالب' : 'Student Name' },
@@ -311,17 +380,81 @@ export const ReportsCenter: React.FC = () => {
     return {
       columns,
       rows,
-      attendedHours: Number(sumAtt.toFixed(1)),
-      absentHours: Number(sumAbs.toFixed(1)),
-      avgRate: rows.length > 0 ? Number((sumPct / rows.length).toFixed(1)) : 0,
+      summaryItems: [
+        { label: isAr ? 'إجمالي الطلبة' : 'Students', value: String(rows.length) },
+        { label: isAr ? 'ساعات الحضور' : 'Attended Hrs', value: String(Number(sumAtt.toFixed(1))) },
+        { label: isAr ? 'ساعات الغياب' : 'Absent Hrs', value: String(Number(sumAbs.toFixed(1))) },
+        { label: isAr ? 'متوسط الحضور' : 'Avg Rate', value: `${rows.length > 0 ? Number((sumPct / rows.length).toFixed(1)) : 0}%` },
+      ],
     };
   }, [activePolicy, dataset.corrections, dataset.departments, dataset.enrollments, dataset.lecturers, dataset.programs, dataset.records, dataset.subjects, deptId, filteredLectures, filteredStudents, isAr, lecturerId, programId, reportType, statusFilter, subjectId, t]);
 
   const currentTypeMeta = reportTypes.find((r) => r.key === reportType) || reportTypes[0];
 
+  const appliedFiltersText = useMemo(() => {
+    const parts: string[] = [`${isAr ? 'الفترة' : 'Period'}: ${effectiveDates.from} → ${effectiveDates.to}`];
+    if (yearId) {
+      const y = dataset.academicYears.find((x) => x.id === yearId);
+      if (y) parts.push(`${isAr ? 'السنة' : 'Year'}: ${y.label}`);
+    }
+    if (semesterId) {
+      const s = dataset.semesters.find((x) => x.id === semesterId);
+      if (s) parts.push(`${isAr ? 'الفصل' : 'Semester'}: ${isAr ? s.nameAr : s.nameEn}`);
+    }
+    if (deptId) {
+      const d = dataset.departments.find((x) => x.id === deptId);
+      if (d) parts.push(`${isAr ? 'القسم' : 'Dept'}: ${isAr ? d.nameAr : d.nameEn}`);
+    }
+    if (programId) {
+      const p = dataset.programs.find((x) => x.id === programId);
+      if (p) parts.push(`${isAr ? 'البرنامج' : 'Program'}: ${isAr ? p.nameAr : p.nameEn}`);
+    }
+    if (subjectId) {
+      const sub = dataset.subjects.find((x) => x.id === subjectId);
+      if (sub) parts.push(`${isAr ? 'المادة' : 'Subject'}: ${isAr ? sub.nameAr : sub.nameEn}`);
+    }
+    if (lecturerId) {
+      const lec = dataset.lecturers.find((x) => x.id === lecturerId);
+      if (lec) parts.push(`${isAr ? 'التدريسي' : 'Lecturer'}: ${isAr ? lec.fullNameAr : lec.fullNameEn}`);
+    }
+    if (studentId) {
+      const stu = dataset.students.find((x) => x.id === studentId);
+      if (stu) parts.push(`${isAr ? 'الطالب' : 'Student'}: ${isAr ? stu.fullNameAr : stu.fullNameEn}`);
+    }
+    if (statusFilter) {
+      parts.push(`${t.common.status}: ${t.statuses[statusFilter as keyof typeof t.statuses] || statusFilter}`);
+    }
+    return parts.join(' · ');
+  }, [dataset.academicYears, dataset.departments, dataset.lecturers, dataset.programs, dataset.semesters, dataset.students, dataset.subjects, deptId, effectiveDates.from, effectiveDates.to, isAr, lecturerId, programId, semesterId, statusFilter, studentId, subjectId, t, yearId]);
+
+  const pdfConfig: InstitutionalReportConfig = useMemo(() => {
+    const resolvedOrientation =
+      pdfOrientation === 'auto'
+        ? reportPayload.columns.length >= 7
+          ? 'landscape'
+          : 'portrait'
+        : pdfOrientation;
+    return {
+      filename: `sgas_${reportType}_${today}`,
+      titleAr: currentTypeMeta.ar,
+      titleEn: currentTypeMeta.en,
+      periodLabel: `${effectiveDates.from} — ${effectiveDates.to}`,
+      appliedFilters: appliedFiltersText,
+      lang,
+      settings: dataset.settings,
+      summaryItems: reportPayload.summaryItems,
+      columns: reportPayload.columns,
+      rows: reportPayload.rows,
+      orientation: resolvedOrientation,
+      documentRef: documentRef.trim() || buildOfficialDocumentRef(reportType, today),
+      officialNotes: officialNotes.trim() || undefined,
+      generatedBy: `${isAr ? currentUser?.displayNameAr : currentUser?.displayNameEn || currentUser?.displayNameAr || ''} (${t.roles[role]})`,
+      includeSignatures,
+    };
+  }, [appliedFiltersText, currentTypeMeta.ar, currentTypeMeta.en, currentUser, dataset.settings, documentRef, effectiveDates.from, effectiveDates.to, includeSignatures, isAr, lang, officialNotes, pdfOrientation, reportPayload, reportType, role, t.roles, today]);
+
   const handleExport = async (format: 'xlsx' | 'pdf' | 'csv' | 'print') => {
     const filename = `sgas_${reportType}_${today}`;
-    const appliedFilters = `${isAr ? 'الفترة:' : 'Period:'} ${effectiveDates.from} → ${effectiveDates.to}`;
 
     if (format === 'xlsx') {
       exportToExcel(filename, currentTypeMeta.en.slice(0, 28), reportPayload.rows, isAr);
@@ -332,23 +465,7 @@ export const ReportsCenter: React.FC = () => {
     } else if (format === 'pdf') {
       setExportingPdf(true);
       try {
-        await exportInstitutionalPdf({
-          filename,
-          titleAr: currentTypeMeta.ar,
-          titleEn: currentTypeMeta.en,
-          periodLabel: `${effectiveDates.from} — ${effectiveDates.to}`,
-          appliedFilters,
-          lang,
-          settings: dataset.settings,
-          summaryItems: [
-            { label: isAr ? 'إجمالي الصفوف' : 'Records', value: String(reportPayload.rows.length) },
-            { label: isAr ? 'ساعات الحضور' : 'Attended Hrs', value: String(reportPayload.attendedHours) },
-            { label: isAr ? 'ساعات الغياب' : 'Absent Hrs', value: String(reportPayload.absentHours) },
-            { label: isAr ? 'متوسط النسبة' : 'Avg Rate', value: `${reportPayload.avgRate}%` },
-          ],
-          columns: reportPayload.columns,
-          rows: reportPayload.rows,
-        });
+        await exportInstitutionalPdf(pdfConfig);
       } finally {
         setExportingPdf(false);
       }
@@ -364,7 +481,7 @@ export const ReportsCenter: React.FC = () => {
       generatedByRole: role,
       recordCount: reportPayload.rows.length,
     });
-    pushToast('success', isAr ? 'تم توليد التقرير وتوثيقه' : 'Report generated and logged');
+    pushToast('success', isAr ? 'تم توليد التقرير الرسمي وتوثيقه بنجاح' : 'Official report generated and logged');
   };
 
   return (
@@ -375,17 +492,21 @@ export const ReportsCenter: React.FC = () => {
           <div>
             <h1 className="text-lg font-extrabold text-slate-900">{t.nav.reports}</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isAr ? '16 نوع تقرير رسمي مع ترويسة الجامعة التقنية الوسطى ودعم Excel و PDF العربي و CSV' : '16 official institutional reports with Excel, RTL Arabic PDF & CSV export'}
+              {isAr ? '16 نوع تقرير رسمي بترويسة الجامعة التقنية الوسطى، ترقيم وثيقة، توقيع ومصادقة PDF، و Excel/CSV' : '16 official institutional reports with MTU letterhead, document ref, official PDF signatures, Excel & CSV export'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button onClick={() => setPreviewOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-[#F5F9FF] text-[#1565C0] text-xs font-semibold hover:bg-blue-50">
+              <Eye className="w-4 h-4" />
+              <span>{isAr ? 'معاينة وثيقة PDF الرسمية' : 'Preview Official PDF'}</span>
+            </button>
+            <button disabled={exportingPdf} onClick={() => handleExport('pdf')} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1565C0] text-white text-xs font-semibold hover:bg-blue-800 disabled:opacity-50">
+              <FileText className="w-4 h-4" />
+              <span>{exportingPdf ? t.common.loading : (isAr ? 'تحميل PDF رسمي' : 'Download Official PDF')}</span>
+            </button>
             <button onClick={() => handleExport('xlsx')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
               <FileSpreadsheet className="w-4 h-4" />
               <span>{t.actions.exportXlsx}</span>
-            </button>
-            <button disabled={exportingPdf} onClick={() => handleExport('pdf')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1565C0] text-white text-xs font-semibold hover:bg-blue-800 disabled:opacity-50">
-              <FileText className="w-4 h-4" />
-              <span>{exportingPdf ? t.common.loading : t.actions.exportPdf}</span>
             </button>
             <button onClick={() => handleExport('csv')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50">
               <Download className="w-4 h-4" />
@@ -402,7 +523,15 @@ export const ReportsCenter: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 text-xs">
           <div>
             <label className="block font-semibold text-slate-600 mb-1 flex items-center gap-1"><Filter className="w-3 h-3" /> {isAr ? 'نوع التقرير (16)' : 'Report Type (16)'}</label>
-            <select value={reportType} onChange={(e) => setReportType(e.target.value as ReportTypeKey)} className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold">
+            <select
+              value={reportType}
+              onChange={(e) => {
+                const next = e.target.value as ReportTypeKey;
+                setReportType(next);
+                setDocumentRef(buildOfficialDocumentRef(next, today));
+              }}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+            >
               {reportTypes.map((r) => <option key={r.key} value={r.key}>{isAr ? r.ar : r.en}</option>)}
             </select>
           </div>
@@ -497,6 +626,47 @@ export const ReportsCenter: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Official University PDF Formatting Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100 text-xs bg-[#F5F9FF]/60 p-3 rounded-xl">
+          <div>
+            <label className="block font-semibold text-slate-600 mb-1">{isAr ? 'رقم الوثيقة / الإشارة الرسمية' : 'Official Document Ref'}</label>
+            <input
+              value={documentRef}
+              onChange={(e) => setDocumentRef(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono-num"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-600 mb-1">{isAr ? 'اتجاه صفحة PDF' : 'PDF Page Orientation'}</label>
+            <select
+              value={pdfOrientation}
+              onChange={(e) => setPdfOrientation(e.target.value as 'auto' | 'portrait' | 'landscape')}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+            >
+              <option value="auto">{isAr ? 'تلقائي حسب الأعمدة' : 'Auto (Recommended)'}</option>
+              <option value="portrait">{isAr ? 'عمودي (A4 Portrait)' : 'Portrait (A4)'}</option>
+              <option value="landscape">{isAr ? 'أفقي (A4 Landscape)' : 'Landscape (A4)'}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-600 mb-1">{isAr ? 'ملاحظات رسمية في ذيل الوثيقة' : 'Official Remarks (Optional)'}</label>
+            <input
+              value={officialNotes}
+              onChange={(e) => setOfficialNotes(e.target.value)}
+              placeholder={isAr ? 'تُضاف في نهاية تقرير PDF...' : 'Appended to official PDF footer...'}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+            />
+          </div>
+          <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold cursor-pointer self-end h-[34px]">
+            <input
+              type="checkbox"
+              checked={includeSignatures}
+              onChange={(e) => setIncludeSignatures(e.target.checked)}
+            />
+            <span>{isAr ? 'تضمين حقل التواقيع والختم الرسمي' : 'Include Official Signatures & Seal'}</span>
+          </label>
+        </div>
       </div>
 
       {/* Report Table Preview */}
@@ -537,6 +707,52 @@ export const ReportsCenter: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Official PDF Document Preview Modal */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-blue-100 max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-blue-100 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-bold text-sm text-slate-900">
+                  {isAr ? 'معاينة وثيقة التقرير الجامعي الرسمي (PDF)' : 'Official University PDF Document Preview'}
+                </h2>
+                <p className="text-[11px] text-slate-500 font-mono-num mt-0.5">{pdfConfig.documentRef}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={exportingPdf}
+                  onClick={async () => {
+                    await handleExport('pdf');
+                    setPreviewOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1565C0] text-white text-xs font-semibold hover:bg-blue-800 disabled:opacity-50"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>{exportingPdf ? t.common.loading : (isAr ? 'تنزيل ملف PDF' : 'Download PDF')}</span>
+                </button>
+                <button onClick={() => setPreviewOpen(false)} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="p-5 overflow-y-auto bg-slate-100 flex-1">
+              <div
+                className="mx-auto bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden max-w-[980px]"
+                dangerouslySetInnerHTML={{
+                  __html: buildOfficialReportHtmlPage(
+                    pdfConfig,
+                    pdfConfig.rows.slice(0, 18),
+                    0,
+                    1,
+                    0,
+                  ),
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

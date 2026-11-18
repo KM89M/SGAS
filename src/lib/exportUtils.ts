@@ -45,14 +45,43 @@ export interface InstitutionalReportConfig {
   summaryItems: { label: string; value: string }[];
   columns: { key: string; label: string }[];
   rows: Record<string, unknown>[];
+  orientation?: 'portrait' | 'landscape';
+  documentRef?: string;
+  officialNotes?: string;
+  generatedBy?: string;
+  includeSignatures?: boolean;
 }
 
-/**
- * Renders an Arabic-compatible RTL/LTR institutional PDF via browser shaping engine
- * inside an isolated off-screen HTML element, avoiding broken Arabic glyph ligatures.
- */
-export async function exportInstitutionalPdf(config: InstitutionalReportConfig): Promise<void> {
+export function paginateReportRows<T>(rows: T[], firstPageSize: number, nextPageSize: number): T[][] {
+  if (rows.length === 0) return [[]];
+  const pages: T[][] = [];
+  pages.push(rows.slice(0, firstPageSize));
+  let offset = firstPageSize;
+  while (offset < rows.length) {
+    pages.push(rows.slice(offset, offset + nextPageSize));
+    offset += nextPageSize;
+  }
+  return pages;
+}
+
+export function buildOfficialDocumentRef(reportType: string, dateStr: string): string {
+  const cleanType = reportType.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6) || 'RPT';
+  const cleanDate = dateStr.replace(/-/g, '');
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `MTU-TCM-${cleanType}-${cleanDate}-${suffix}`;
+}
+
+export function buildOfficialReportHtmlPage(
+  config: InstitutionalReportConfig,
+  pageRows: Record<string, unknown>[],
+  pageIndex: number,
+  totalPages: number,
+  rowStartOffset: number,
+): string {
   const isRtl = config.lang === 'ar';
+  const isFirst = pageIndex === 0;
+  const isLast = pageIndex === totalPages - 1;
+
   const uniName = isRtl
     ? config.settings?.universityNameAr || INSTITUTION.universityAr
     : config.settings?.universityNameEn || INSTITUTION.universityEn;
@@ -62,126 +91,203 @@ export async function exportInstitutionalPdf(config: InstitutionalReportConfig):
   const deptName = isRtl
     ? config.settings?.departmentTitleAr || INSTITUTION.departmentAr
     : config.settings?.departmentTitleEn || INSTITUTION.departmentEn;
+  const ministryLabel = isRtl
+    ? 'جمهورية العراق · وزارة التعليم العالي والبحث العلمي'
+    : 'Republic of Iraq · Ministry of Higher Education & Scientific Research';
+
   const title = isRtl ? config.titleAr : config.titleEn;
   const generatedAt = formatBaghdadDateTime(new Date(), config.lang);
+  const docRef = config.documentRef || `MTU-TCM-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
 
-  const container = document.createElement('div');
-  container.dir = isRtl ? 'rtl' : 'ltr';
-  container.style.position = 'fixed';
-  container.style.left = '-10000px';
-  container.style.top = '0';
-  container.style.width = '1020px';
-  container.style.backgroundColor = '#FFFFFF';
-  container.style.color = '#1E293B';
-  container.style.padding = '36px';
-  container.style.fontFamily = isRtl
-    ? "'Cairo', 'Tajawal', sans-serif"
-    : "'Plus Jakarta Sans', sans-serif";
+  const uniLogo = config.settings?.universityLogoUrl
+    ? `<img src="${escapeHtml(config.settings.universityLogoUrl)}" crossorigin="anonymous" style="width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid #DBEAFE;background:#FFFFFF;" onerror="this.style.display='none'" />`
+    : `<div style="width:54px;height:54px;border-radius:10px;background:#1565C0;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;">MTU</div>`;
+
+  const colLogo = config.settings?.collegeLogoUrl
+    ? `<img src="${escapeHtml(config.settings.collegeLogoUrl)}" crossorigin="anonymous" style="width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid #DBEAFE;background:#FFFFFF;" onerror="this.style.display='none'" />`
+    : '';
 
   const summaryHtml = config.summaryItems
     .map(
       (s) => `
-      <div style="border:1px solid #DBEAFE;background:#F5F9FF;border-radius:10px;padding:10px 14px;min-width:140px;">
-        <div style="font-size:11px;color:#64748B;margin-bottom:4px;">${escapeHtml(s.label)}</div>
-        <div style="font-size:16px;font-weight:700;color:#1565C0;">${escapeHtml(s.value)}</div>
+      <div style="flex:1;min-width:130px;border:1px solid #BFDBFE;background:#F5F9FF;border-radius:8px;padding:9px 12px;">
+        <div style="font-size:10.5px;color:#475569;margin-bottom:3px;">${escapeHtml(s.label)}</div>
+        <div style="font-size:15px;font-weight:800;color:#1565C0;">${escapeHtml(s.value)}</div>
       </div>`,
     )
     .join('');
 
-  const headHtml = config.columns
-    .map(
-      (c) =>
-        `<th style="padding:10px 8px;border:1px solid #CBD5E1;background:#E3F2FD;color:#1565C0;font-size:12px;text-align:${isRtl ? 'right' : 'left'};">${escapeHtml(c.label)}</th>`,
-    )
-    .join('');
+  const headHtml = `
+    <th style="padding:8px 6px;border:1px solid #CBD5E1;background:#E3F2FD;color:#1565C0;font-size:11px;text-align:center;width:34px;">#</th>
+    ${config.columns
+      .map(
+        (c) =>
+          `<th style="padding:8px 7px;border:1px solid #CBD5E1;background:#E3F2FD;color:#1565C0;font-size:11px;text-align:${isRtl ? 'right' : 'left'};font-weight:700;">${escapeHtml(c.label)}</th>`,
+      )
+      .join('')}
+  `;
 
-  const bodyHtml = config.rows
-    .slice(0, 120)
+  const bodyHtml = pageRows
     .map(
       (r, idx) => `
       <tr style="background:${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+        <td style="padding:7px 6px;border:1px solid #E2E8F0;font-size:10.5px;color:#64748B;text-align:center;font-family:'IBM Plex Mono',monospace;">${rowStartOffset + idx + 1}</td>
         ${config.columns
           .map(
             (c) =>
-              `<td style="padding:8px;border:1px solid #E2E8F0;font-size:11.5px;color:#1E293B;">${escapeHtml(String(r[c.key] ?? '—'))}</td>`,
+              `<td style="padding:7px 7px;border:1px solid #E2E8F0;font-size:11px;color:#0F172A;">${escapeHtml(String(r[c.key] ?? '—'))}</td>`,
           )
           .join('')}
       </tr>`,
     )
     .join('');
 
-  container.innerHTML = `
-    <div style="border-bottom:2px solid #1565C0;padding-bottom:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+  return `
+    <div style="direction:${isRtl ? 'rtl' : 'ltr'};font-family:${isRtl ? "'Cairo', 'Tajawal', sans-serif" : "'Plus Jakarta Sans', sans-serif"};color:#0F172A;background:#FFFFFF;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;min-height:100%;">
       <div>
-        <div style="font-size:15px;font-weight:700;color:#1565C0;">${escapeHtml(uniName)}</div>
-        <div style="font-size:14px;font-weight:600;color:#1E293B;margin-top:2px;">${escapeHtml(colName)}</div>
-        <div style="font-size:12.5px;color:#475569;margin-top:2px;">${escapeHtml(deptName)}</div>
+        <!-- Official Letterhead -->
+        <div style="border-bottom:2px solid #1565C0;padding-bottom:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${uniLogo}
+            <div>
+              <div style="font-size:11px;color:#475569;font-weight:600;">${escapeHtml(ministryLabel)}</div>
+              <div style="font-size:15px;font-weight:800;color:#1565C0;margin-top:2px;">${escapeHtml(uniName)}</div>
+              <div style="font-size:13px;font-weight:700;color:#1E293B;">${escapeHtml(colName)} · ${escapeHtml(deptName)}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:${isRtl ? 'left' : 'right'};font-size:10.5px;color:#334155;line-height:1.55;">
+              <div><strong>${isRtl ? 'رقم الوثيقة' : 'Doc Ref'}:</strong> <span style="font-family:'IBM Plex Mono',monospace;">${escapeHtml(docRef)}</span></div>
+              <div><strong>${isRtl ? 'تاريخ الإصدار' : 'Issued'}:</strong> ${escapeHtml(generatedAt)}</div>
+              <div><strong>${isRtl ? 'الفترة' : 'Period'}:</strong> ${escapeHtml(config.periodLabel)}</div>
+              ${config.generatedBy ? `<div><strong>${isRtl ? 'أعدّه' : 'Prepared By'}:</strong> ${escapeHtml(config.generatedBy)}</div>` : ''}
+            </div>
+            ${colLogo}
+          </div>
+        </div>
+
+        ${
+          isFirst
+            ? `
+          <div style="margin-bottom:12px;">
+            <h1 style="font-size:18px;font-weight:800;color:#0F172A;margin:0 0 4px 0;">${escapeHtml(title)}</h1>
+            <div style="font-size:11px;color:#475569;"><strong>${isRtl ? 'نطاق التقرير والتصفية' : 'Scope & Filters'}:</strong> ${escapeHtml(config.appliedFilters)}</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            ${summaryHtml}
+          </div>
+        `
+            : `
+          <div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#1565C0;">
+            ${escapeHtml(title)} — ${isRtl ? 'تابع' : 'Continued'} (${pageIndex + 1}/${totalPages})
+          </div>
+        `
+        }
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+          <thead><tr>${headHtml}</tr></thead>
+          <tbody>${
+            bodyHtml ||
+            `<tr><td colspan="${config.columns.length + 1}" style="padding:18px;text-align:center;color:#64748B;">${isRtl ? 'لا توجد سجلات مطابقة لمعايير التصفية المختارة' : 'No records match the selected filters'}</td></tr>`
+          }</tbody>
+        </table>
+
+        ${
+          isLast && config.officialNotes
+            ? `
+          <div style="margin-top:10px;padding:10px 12px;border:1px solid #CBD5E1;background:#F8FAFC;border-radius:8px;font-size:11px;color:#334155;">
+            <strong>${isRtl ? 'ملاحظات رسمية:' : 'Official Remarks:'}</strong> ${escapeHtml(config.officialNotes)}
+          </div>
+        `
+            : ''
+        }
       </div>
-      <div style="text-align:${isRtl ? 'left' : 'right'};font-size:11.5px;color:#475569;">
-        <div><strong>${isRtl ? 'تاريخ التوليد' : 'Generated'}:</strong> ${escapeHtml(generatedAt)}</div>
-        <div style="margin-top:3px;"><strong>${isRtl ? 'الفترة' : 'Period'}:</strong> ${escapeHtml(config.periodLabel)}</div>
-        <div style="margin-top:3px;"><strong>${isRtl ? 'التوقيت' : 'Timezone'}:</strong> Asia/Baghdad</div>
-      </div>
-    </div>
 
-    <div style="margin-bottom:16px;">
-      <h1 style="font-size:20px;font-weight:800;color:#0F172A;margin:0 0 6px 0;">${escapeHtml(title)}</h1>
-      <div style="font-size:12px;color:#64748B;">${isRtl ? 'عوامل التصفية المطبقة' : 'Applied Filters'}: ${escapeHtml(config.appliedFilters)}</div>
-    </div>
-
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
-      ${summaryHtml}
-    </div>
-
-    <table style="width:100%;border-collapse:collapse;margin-bottom:28px;">
-      <thead><tr>${headHtml}</tr></thead>
-      <tbody>${bodyHtml || `<tr><td colspan="${config.columns.length}" style="padding:18px;text-align:center;color:#64748B;">${isRtl ? 'لا توجد سجلات مطابقة' : 'No matching records'}</td></tr>`}</tbody>
-    </table>
-
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #CBD5E1;display:flex;justify-content:space-between;font-size:12px;color:#334155;">
       <div>
-        <div style="font-weight:700;margin-bottom:28px;">${isRtl ? 'توقيع مسؤول شعبة الدراسات العليا' : 'Postgraduate Studies Officer Signature'}</div>
-        <div style="border-top:1px dashed #94A3B8;width:200px;padding-top:4px;">${isRtl ? 'الاسم والتوقيع والختم' : 'Name, Signature & Stamp'}</div>
-      </div>
-      <div>
-        <div style="font-weight:700;margin-bottom:28px;">${isRtl ? 'مصادقة عمادة الكلية / القسم العلمي' : 'College / Department Approval'}</div>
-        <div style="border-top:1px dashed #94A3B8;width:200px;padding-top:4px;">${isRtl ? 'التاريخ والاعتماد' : 'Date & Approval'}</div>
+        ${
+          isLast && config.includeSignatures !== false
+            ? `
+          <div style="margin-top:18px;padding-top:14px;border-top:1px solid #CBD5E1;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;font-size:11px;color:#334155;">
+            <div>
+              <div style="font-weight:700;margin-bottom:26px;">${isRtl ? 'توقيع مسؤول شعبة الدراسات العليا' : 'Postgraduate Studies Officer'}</div>
+              <div style="border-top:1px dashed #94A3B8;width:190px;padding-top:4px;">${isRtl ? 'الاسم والتوقيع والتاريخ' : 'Name, Signature & Date'}</div>
+            </div>
+            <div style="text-align:center;border:1px dashed #CBD5E1;border-radius:10px;padding:10px 18px;color:#64748B;font-size:10px;">
+              ${isRtl ? 'مكان الختم الرسمي للكلية / الشعبة' : 'Official College / Dept Seal'}
+            </div>
+            <div>
+              <div style="font-weight:700;margin-bottom:26px;">${isRtl ? 'مصادقة عميد الكلية / رئيس القسم العلمي' : 'Dean / Department Chair Approval'}</div>
+              <div style="border-top:1px dashed #94A3B8;width:190px;padding-top:4px;">${isRtl ? 'التوقيع والاعتماد' : 'Signature & Approval'}</div>
+            </div>
+          </div>
+        `
+            : ''
+        }
+
+        <div style="margin-top:12px;padding-top:8px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;font-size:9.5px;color:#64748B;">
+          <span>SGAS · ${escapeHtml(uniName)} · Asia/Baghdad</span>
+          <span style="font-family:'IBM Plex Mono',monospace;">${isRtl ? `صفحة ${pageIndex + 1} من ${totalPages}` : `Page ${pageIndex + 1} of ${totalPages}`}</span>
+        </div>
       </div>
     </div>
   `;
+}
 
-  document.body.appendChild(container);
+/**
+ * Generates and downloads a multi-page, Arabic-compatible RTL/LTR institutional PDF
+ * with zero sliced table rows, university letterhead, document ref, and official signatures.
+ */
+export async function exportInstitutionalPdf(config: InstitutionalReportConfig): Promise<void> {
+  const orientation = config.orientation || (config.columns.length >= 7 ? 'landscape' : 'portrait');
+  const firstPageSize = orientation === 'landscape' ? 12 : 18;
+  const nextPageSize = orientation === 'landscape' ? 18 : 26;
+  const pages = paginateReportRows(config.rows, firstPageSize, nextPageSize);
+
+  const containerWidth = orientation === 'landscape' ? 1240 : 900;
+  const containerMinHeight = orientation === 'landscape' ? 860 : 1260;
+
+  const pdf = new jsPDF(orientation === 'landscape' ? 'l' : 'p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.left = '-12000px';
+  host.style.top = '0';
+  host.style.width = `${containerWidth}px`;
+  host.style.backgroundColor = '#FFFFFF';
+  document.body.appendChild(host);
+
   try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#FFFFFF' });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let rowOffset = 0;
+    for (let i = 0; i < pages.length; i++) {
+      const pageRows = pages[i];
+      host.innerHTML = `<div style="width:${containerWidth}px;min-height:${containerMinHeight}px;background:#FFFFFF;">${buildOfficialReportHtmlPage(
+        config,
+        pageRows,
+        i,
+        pages.length,
+        rowOffset,
+      )}</div>`;
+      rowOffset += pageRows.length;
 
-    let heightLeft = imgHeight;
-    let position = 0;
-    let pageNum = 1;
+      const pageEl = host.firstElementChild as HTMLElement;
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const renderedHeight = (canvas.height * pageWidth) / canvas.width;
+      const drawHeight = Math.min(pageHeight, renderedHeight);
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    pdf.setFontSize(9);
-    pdf.text(`SGAS · ${pageNum}`, pageWidth - 24, pageHeight - 6);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage();
-      pageNum += 1;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      pdf.setFontSize(9);
-      pdf.text(`SGAS · ${pageNum}`, pageWidth - 24, pageHeight - 6);
-      heightLeft -= pageHeight;
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, drawHeight);
     }
 
     pdf.save(`${config.filename}.pdf`);
   } finally {
-    document.body.removeChild(container);
+    document.body.removeChild(host);
   }
 }
 

@@ -1,19 +1,13 @@
-import {
+import type {
   AttendancePolicy,
-  AttendanceRecord,
-  Department,
-  Lecture,
-  Lecturer,
   SGASDataset,
-  Student,
-  Subject,
   UserRole,
-} from '../src/types/sgas';
+} from '../src/types/sgas.ts';
 import {
   calculateStudentAttendance,
   DEFAULT_POLICY,
   getBaghdadDateString,
-} from '../src/lib/attendanceMath';
+} from '../src/lib/attendanceMath.ts';
 
 export interface ScopedContext {
   uid: string;

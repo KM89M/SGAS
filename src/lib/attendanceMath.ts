@@ -1,11 +1,11 @@
-import {
+import type {
   AttendancePolicy,
   AttendanceRecord,
   Holiday,
   Lecture,
   Student,
   StudentEnrollment,
-} from '../types/sgas';
+} from '../types/sgas.ts';
 
 export const DEFAULT_POLICY: AttendancePolicy = {
   id: 'default',
