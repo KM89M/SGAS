@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-ar-display: 'Cairo', 'Tajawal', system-ui, sans-serif;
+    --font-ar-body: 'Tajawal', 'Cairo', system-ui, sans-serif;
+    --font-en-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  html[dir="rtl"] body {
+    font-family: var(--font-ar-body);
+    background-color: #F5F9FF;
+    color: #1E293B;
+  }
+
+  html[dir="rtl"] h1,
+  html[dir="rtl"] h2,
+  html[dir="rtl"] h3,
+  html[dir="rtl"] h4 {
+    font-family: var(--font-ar-display);
+  }
+
+  html[dir="ltr"] body {
+    font-family: var(--font-en-display);
+    background-color: #F5F9FF;
+    color: #1E293B;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

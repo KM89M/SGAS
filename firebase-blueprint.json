@@ -1,0 +1,579 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated institutional user profile and role assignment.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 160 },
+        "displayNameAr": { "type": "string", "maxLength": 140 },
+        "displayNameEn": { "type": "string", "maxLength": 140 },
+        "role": { "type": "string", "enum": ["super_admin", "pg_admin", "dept_admin", "lecturer", "student"] },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "linkedEntityId": { "type": "string", "maxLength": 128 },
+        "inviteId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["active", "disabled", "pending"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayNameAr", "role", "status", "createdAt", "updatedAt"]
+    },
+    "AdminRegistry": {
+      "title": "AdminRegistry",
+      "description": "Authoritative registry of system and postgraduate administrators.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 160 },
+        "role": { "type": "string", "enum": ["super_admin", "pg_admin"] },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "UserInvite": {
+      "title": "UserInvite",
+      "description": "Admin-issued invitation restricting account activation to authorized institutional users.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "role": { "type": "string", "enum": ["super_admin", "pg_admin", "dept_admin", "lecturer", "student"] },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "linkedEntityId": { "type": "string", "maxLength": 128 },
+        "displayNameAr": { "type": "string", "maxLength": 140 },
+        "displayNameEn": { "type": "string", "maxLength": 140 },
+        "status": { "type": "string", "enum": ["pending", "claimed", "revoked"] },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "displayNameAr", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Academic department in the Technical College of Management - Baghdad.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nameAr": { "type": "string", "maxLength": 160 },
+        "nameEn": { "type": "string", "maxLength": 160 },
+        "adminUid": { "type": "string", "maxLength": 128 },
+        "adminName": { "type": "string", "maxLength": 140 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "nameAr", "nameEn", "isActive", "createdAt", "updatedAt"]
+    },
+    "AcademicProgram": {
+      "title": "AcademicProgram",
+      "description": "Postgraduate academic degree program (Masters, PhD, Diploma).",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nameAr": { "type": "string", "maxLength": 160 },
+        "nameEn": { "type": "string", "maxLength": 160 },
+        "degreeType": { "type": "string", "enum": ["masters", "phd", "diploma"] },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "totalRequiredHours": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "nameAr", "nameEn", "degreeType", "departmentId", "isActive", "createdAt", "updatedAt"]
+    },
+    "AcademicYear": {
+      "title": "AcademicYear",
+      "description": "Academic year configuration.",
+      "type": "object",
+      "properties": {
+        "label": { "type": "string", "maxLength": 40 },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "endDate": { "type": "string", "maxLength": 20 },
+        "isCurrent": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["label", "startDate", "endDate", "isCurrent", "isActive", "createdAt", "updatedAt"]
+    },
+    "Semester": {
+      "title": "Semester",
+      "description": "Academic semester within an academic year.",
+      "type": "object",
+      "properties": {
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "nameAr": { "type": "string", "maxLength": 100 },
+        "nameEn": { "type": "string", "maxLength": 100 },
+        "semesterNumber": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "endDate": { "type": "string", "maxLength": 20 },
+        "isCurrent": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["academicYearId", "nameAr", "nameEn", "semesterNumber", "startDate", "endDate", "isCurrent", "isActive", "createdAt", "updatedAt"]
+    },
+    "Cohort": {
+      "title": "Cohort",
+      "description": "Postgraduate student intake cohort.",
+      "type": "object",
+      "properties": {
+        "nameAr": { "type": "string", "maxLength": 120 },
+        "nameEn": { "type": "string", "maxLength": 120 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "admissionYear": { "type": "string", "maxLength": 20 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameAr", "nameEn", "departmentId", "programId", "academicYearId", "isActive", "createdAt", "updatedAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Postgraduate student record with protected PII.",
+      "type": "object",
+      "properties": {
+        "universityId": { "type": "string", "maxLength": 48, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullNameAr": { "type": "string", "maxLength": 160 },
+        "fullNameEn": { "type": "string", "maxLength": 160 },
+        "email": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "semesterId": { "type": "string", "maxLength": 128 },
+        "cohortId": { "type": "string", "maxLength": 128 },
+        "enrollmentStatus": { "type": "string", "enum": ["enrolled", "deferred", "graduated", "archived"] },
+        "accountStatus": { "type": "string", "enum": ["active", "disabled"] },
+        "uid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["universityId", "fullNameAr", "fullNameEn", "email", "departmentId", "programId", "enrollmentStatus", "accountStatus", "createdAt", "updatedAt"]
+    },
+    "Lecturer": {
+      "title": "Lecturer",
+      "description": "Postgraduate faculty lecturer record.",
+      "type": "object",
+      "properties": {
+        "lecturerCode": { "type": "string", "maxLength": 48, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullNameAr": { "type": "string", "maxLength": 160 },
+        "fullNameEn": { "type": "string", "maxLength": 160 },
+        "academicTitleAr": { "type": "string", "maxLength": 80 },
+        "academicTitleEn": { "type": "string", "maxLength": 80 },
+        "email": { "type": "string", "maxLength": 160 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "accountStatus": { "type": "string", "enum": ["active", "disabled"] },
+        "uid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lecturerCode", "fullNameAr", "fullNameEn", "academicTitleAr", "email", "departmentId", "accountStatus", "createdAt", "updatedAt"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Academic subject / course with assigned lecturers and planned hours.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 32, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nameAr": { "type": "string", "maxLength": 160 },
+        "nameEn": { "type": "string", "maxLength": 160 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "semesterId": { "type": "string", "maxLength": 128 },
+        "subjectType": { "type": "string", "enum": ["mandatory", "elective"] },
+        "weeklyHours": { "type": "number" },
+        "totalPlannedHours": { "type": "number" },
+        "lecturerIds": { "type": "array" },
+        "lecturerUids": { "type": "array" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "nameAr", "nameEn", "departmentId", "programId", "subjectType", "weeklyHours", "totalPlannedHours", "isActive", "createdAt", "updatedAt"]
+    },
+    "StudentEnrollment": {
+      "title": "StudentEnrollment",
+      "description": "Student enrollment mapping in an academic subject.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentUid": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "semesterId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["active", "dropped", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "subjectId", "departmentId", "programId", "status", "createdAt", "updatedAt"]
+    },
+    "Lecture": {
+      "title": "Lecture",
+      "description": "Scheduled postgraduate lecture session.",
+      "type": "object",
+      "properties": {
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "semesterId": { "type": "string", "maxLength": 128 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "cohortId": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "subjectNameAr": { "type": "string", "maxLength": 160 },
+        "subjectNameEn": { "type": "string", "maxLength": 160 },
+        "lecturerId": { "type": "string", "maxLength": 128 },
+        "lecturerUid": { "type": "string", "maxLength": 128 },
+        "lecturerNameAr": { "type": "string", "maxLength": 160 },
+        "lecturerNameEn": { "type": "string", "maxLength": 160 },
+        "replacementLecturerId": { "type": "string", "maxLength": 128 },
+        "lectureDate": { "type": "string", "maxLength": 20 },
+        "dayOfWeek": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "plannedDurationMinutes": { "type": "number" },
+        "academicCreditHours": { "type": "number" },
+        "classroom": { "type": "string", "maxLength": 100 },
+        "lectureType": { "type": "string", "enum": ["regular", "makeup", "additional", "seminar"] },
+        "status": { "type": "string", "enum": ["scheduled", "attendance_open", "pending_approval", "approved", "completed", "cancelled", "postponed", "rescheduled"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "recurrenceGroupId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["departmentId", "programId", "subjectId", "lecturerId", "lectureDate", "startTime", "endTime", "plannedDurationMinutes", "academicCreditHours", "classroom", "lectureType", "status", "createdAt", "updatedAt"]
+    },
+    "Holiday": {
+      "title": "Holiday",
+      "description": "Official academic or national holiday.",
+      "type": "object",
+      "properties": {
+        "titleAr": { "type": "string", "maxLength": 140 },
+        "titleEn": { "type": "string", "maxLength": 140 },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "endDate": { "type": "string", "maxLength": 20 },
+        "type": { "type": "string", "enum": ["official", "religious", "academic"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titleAr", "titleEn", "startDate", "endDate", "type", "isActive", "createdAt", "updatedAt"]
+    },
+    "AttendanceSession": {
+      "title": "AttendanceSession",
+      "description": "Live dynamic QR attendance session for a scheduled lecture.",
+      "type": "object",
+      "properties": {
+        "lectureId": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "lecturerId": { "type": "string", "maxLength": 128 },
+        "lecturerUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["open", "paused", "closed", "approved"] },
+        "qrTokenHash": { "type": "string", "maxLength": 128 },
+        "qrExpiresAt": { "type": "number" },
+        "rotationSeconds": { "type": "number" },
+        "geofenceEnabled": { "type": "boolean" },
+        "geofenceLat": { "type": "number" },
+        "geofenceLng": { "type": "number" },
+        "geofenceRadiusMeters": { "type": "number" },
+        "totalEnrolled": { "type": "number" },
+        "registeredCount": { "type": "number" },
+        "approvedByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["lectureId", "subjectId", "departmentId", "programId", "lecturerId", "lecturerUid", "status", "rotationSeconds", "geofenceEnabled", "createdAt", "updatedAt"]
+    },
+    "AttendanceToken": {
+      "title": "AttendanceToken",
+      "description": "Hashed QR session token history for expiration and replay prevention.",
+      "type": "object",
+      "properties": {
+        "tokenHash": { "type": "string", "maxLength": 128 },
+        "issuedAt": { "type": "number" },
+        "expiresAt": { "type": "number" },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tokenHash", "issuedAt", "expiresAt", "createdByUid", "createdAt"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Student attendance record locked after lecturer approval.",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "lectureId": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "programId": { "type": "string", "maxLength": 128 },
+        "academicYearId": { "type": "string", "maxLength": 128 },
+        "semesterId": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentUid": { "type": "string", "maxLength": 128 },
+        "studentNameAr": { "type": "string", "maxLength": 160 },
+        "studentNameEn": { "type": "string", "maxLength": 160 },
+        "universityId": { "type": "string", "maxLength": 48 },
+        "lecturerUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["present", "absent", "late", "excused", "pending_approval", "not_recorded", "cancelled"] },
+        "method": { "type": "string", "enum": ["qr_camera", "qr_url", "manual", "fallback_code", "auto_absent"] },
+        "registeredAt": { "type": "string", "maxLength": 64 },
+        "isApproved": { "type": "boolean" },
+        "approvedByUid": { "type": "string", "maxLength": 128 },
+        "approvedAt": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 400 },
+        "suspiciousFlag": { "type": "boolean" },
+        "suspiciousReason": { "type": "string", "maxLength": 240 },
+        "tokenHash": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sessionId", "lectureId", "subjectId", "departmentId", "programId", "studentId", "studentUid", "lecturerUid", "status", "method", "isApproved", "createdAt", "updatedAt"]
+    },
+    "AttendanceCorrection": {
+      "title": "AttendanceCorrection",
+      "description": "Student request to review or correct an attendance record.",
+      "type": "object",
+      "properties": {
+        "recordId": { "type": "string", "maxLength": 128 },
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "lectureId": { "type": "string", "maxLength": 128 },
+        "subjectId": { "type": "string", "maxLength": 128 },
+        "departmentId": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentUid": { "type": "string", "maxLength": 128 },
+        "studentNameAr": { "type": "string", "maxLength": 160 },
+        "currentStatus": { "type": "string", "maxLength": 40 },
+        "requestedStatus": { "type": "string", "enum": ["present", "late", "excused"] },
+        "reason": { "type": "string", "maxLength": 600 },
+        "attachmentNote": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewedByUid": { "type": "string", "maxLength": 128 },
+        "reviewNote": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recordId", "lectureId", "studentId", "studentUid", "currentStatus", "requestedStatus", "reason", "status", "createdAt", "updatedAt"]
+    },
+    "AttendancePolicy": {
+      "title": "AttendancePolicy",
+      "description": "Configurable institutional absence thresholds and hour calculations.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "maxAbsencePercent": { "type": "number" },
+        "firstWarningPercent": { "type": "number" },
+        "secondWarningPercent": { "type": "number" },
+        "criticalWarningPercent": { "type": "number" },
+        "lateThresholdMinutes": { "type": "number" },
+        "lateCountsAsFraction": { "type": "number" },
+        "excusedCountsTowardAttendance": { "type": "boolean" },
+        "academicHourMinutes": { "type": "number" },
+        "defaultQrRotationSeconds": { "type": "number" },
+        "defaultSessionDurationMinutes": { "type": "number" },
+        "geofencingEnabledByDefault": { "type": "boolean" },
+        "updatedByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "maxAbsencePercent", "firstWarningPercent", "secondWarningPercent", "criticalWarningPercent", "academicHourMinutes", "defaultQrRotationSeconds", "createdAt", "updatedAt"]
+    },
+    "NotificationItem": {
+      "title": "NotificationItem",
+      "description": "In-app notification for absence alerts, approvals, and corrections.",
+      "type": "object",
+      "properties": {
+        "recipientUid": { "type": "string", "maxLength": 128 },
+        "recipientRole": { "type": "string", "maxLength": 40 },
+        "titleAr": { "type": "string", "maxLength": 180 },
+        "titleEn": { "type": "string", "maxLength": 180 },
+        "bodyAr": { "type": "string", "maxLength": 600 },
+        "bodyEn": { "type": "string", "maxLength": 600 },
+        "category": { "type": "string", "enum": ["absence_warning", "session_approved", "correction_update", "system"] },
+        "severity": { "type": "string", "enum": ["info", "warning", "critical"] },
+        "isRead": { "type": "boolean" },
+        "relatedId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recipientUid", "titleAr", "titleEn", "bodyAr", "bodyEn", "category", "severity", "isRead", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only security and operational audit trail.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 160 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "action": { "type": "string", "maxLength": 100 },
+        "targetCollection": { "type": "string", "maxLength": 80 },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "previousSummary": { "type": "string", "maxLength": 400 },
+        "newSummary": { "type": "string", "maxLength": 400 },
+        "reason": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorRole", "action", "targetCollection", "targetId", "createdAt"]
+    },
+    "AiQueryLog": {
+      "title": "AiQueryLog",
+      "description": "Audit log of Graduate AI Assistant queries and deterministic tool usage.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "queryText": { "type": "string", "maxLength": 500 },
+        "toolsCalled": { "type": "array" },
+        "modelUsed": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["success", "fallback", "denied", "error"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorRole", "queryText", "modelUsed", "status", "createdAt"]
+    },
+    "ReportHistory": {
+      "title": "ReportHistory",
+      "description": "Log of generated official reports.",
+      "type": "object",
+      "properties": {
+        "reportType": { "type": "string", "maxLength": 80 },
+        "titleAr": { "type": "string", "maxLength": 180 },
+        "titleEn": { "type": "string", "maxLength": 180 },
+        "format": { "type": "string", "enum": ["xlsx", "pdf", "csv", "print"] },
+        "periodLabel": { "type": "string", "maxLength": 120 },
+        "generatedByUid": { "type": "string", "maxLength": 128 },
+        "generatedByRole": { "type": "string", "maxLength": 40 },
+        "recordCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reportType", "titleAr", "format", "generatedByUid", "generatedByRole", "recordCount", "createdAt"]
+    },
+    "SystemSetting": {
+      "title": "SystemSetting",
+      "description": "Institutional branding, timezone, and system configuration.",
+      "type": "object",
+      "properties": {
+        "universityNameAr": { "type": "string", "maxLength": 160 },
+        "universityNameEn": { "type": "string", "maxLength": 160 },
+        "collegeNameAr": { "type": "string", "maxLength": 160 },
+        "collegeNameEn": { "type": "string", "maxLength": 160 },
+        "departmentTitleAr": { "type": "string", "maxLength": 160 },
+        "departmentTitleEn": { "type": "string", "maxLength": 160 },
+        "universityLogoUrl": { "type": "string", "maxLength": 500 },
+        "collegeLogoUrl": { "type": "string", "maxLength": 500 },
+        "timezone": { "type": "string", "maxLength": 64 },
+        "defaultLanguage": { "type": "string", "enum": ["ar", "en"] },
+        "updatedByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["universityNameAr", "universityNameEn", "collegeNameAr", "collegeNameEn", "departmentTitleAr", "departmentTitleEn", "timezone", "defaultLanguage", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Authenticated user accounts and role profiles."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRegistry" },
+      "description": "Authoritative admin registry."
+    },
+    "/userInvites/{inviteId}": {
+      "schema": { "$ref": "#/entities/UserInvite" },
+      "description": "Admin-created user invitations."
+    },
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "Academic departments."
+    },
+    "/academicPrograms/{programId}": {
+      "schema": { "$ref": "#/entities/AcademicProgram" },
+      "description": "Postgraduate academic programs."
+    },
+    "/academicYears/{yearId}": {
+      "schema": { "$ref": "#/entities/AcademicYear" },
+      "description": "Academic years."
+    },
+    "/semesters/{semesterId}": {
+      "schema": { "$ref": "#/entities/Semester" },
+      "description": "Semesters."
+    },
+    "/cohorts/{cohortId}": {
+      "schema": { "$ref": "#/entities/Cohort" },
+      "description": "Student cohorts."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Postgraduate student directory."
+    },
+    "/lecturers/{lecturerId}": {
+      "schema": { "$ref": "#/entities/Lecturer" },
+      "description": "Faculty lecturers."
+    },
+    "/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Postgraduate subjects."
+    },
+    "/studentEnrollments/{enrollmentId}": {
+      "schema": { "$ref": "#/entities/StudentEnrollment" },
+      "description": "Student-subject enrollments."
+    },
+    "/lectures/{lectureId}": {
+      "schema": { "$ref": "#/entities/Lecture" },
+      "description": "Scheduled lectures."
+    },
+    "/holidays/{holidayId}": {
+      "schema": { "$ref": "#/entities/Holiday" },
+      "description": "Official holidays."
+    },
+    "/attendanceSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/AttendanceSession" },
+      "description": "Live dynamic QR attendance sessions."
+    },
+    "/attendanceSessions/{sessionId}/tokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/AttendanceToken" },
+      "description": "Session QR token hashes."
+    },
+    "/attendanceRecords/{recordId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Student attendance records."
+    },
+    "/attendanceCorrections/{correctionId}": {
+      "schema": { "$ref": "#/entities/AttendanceCorrection" },
+      "description": "Attendance correction requests."
+    },
+    "/attendancePolicies/{policyId}": {
+      "schema": { "$ref": "#/entities/AttendancePolicy" },
+      "description": "Institutional attendance policies."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationItem" },
+      "description": "User notifications."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable system audit log."
+    },
+    "/aiQueryLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AiQueryLog" },
+      "description": "AI Assistant query audit logs."
+    },
+    "/reportHistory/{reportId}": {
+      "schema": { "$ref": "#/entities/ReportHistory" },
+      "description": "Generated report history."
+    },
+    "/systemSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSetting" },
+      "description": "Institutional configuration settings."
+    }
+  }
+}

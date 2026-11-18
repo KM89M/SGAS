@@ -1,0 +1,1207 @@
+MASTER PROMPT — Smart Graduate Attendance System (SGAS)
+
+Act as a senior full-stack software engineer, database architect, cybersecurity specialist, AI engineer, and professional UI/UX designer.
+
+Build a complete, functional, production-oriented web application named:
+
+SGAS – Smart Graduate Attendance System
+
+نظام إدارة حضور طلبة الدراسات العليا الذكي
+
+Develop this system specifically for:
+
+- University: Middle Technical University (MTU)
+- College: Technical College of Management – Baghdad
+- Administration: Postgraduate Studies Department
+- Country: Iraq
+
+Arabic institutional name:
+
+الجامعة التقنية الوسطى
+الكلية التقنية الإدارية – بغداد
+شعبة الدراسات العليا
+
+Do not create only a visual prototype, static dashboard, or mockup. Build a functional full-stack application with persistent database storage, authentication, authorization, QR attendance, reporting, and AI-powered analytics.
+
+1. Project Objectives
+
+Create a centralized system for managing postgraduate student attendance across all academic departments, including Master's and PhD programs.
+
+The system must:
+
+- Manage academic departments, students, lecturers, subjects, academic years, and semesters.
+- Manage official lecture schedules.
+- Record daily attendance through secure dynamic QR codes.
+- Allow lecturers to review and approve attendance.
+- Calculate attendance and absence by lecture count and academic hours.
+- Generate comprehensive reports.
+- Provide an intelligent AI assistant connected to authorized database information.
+- Maintain complete historical records and audit logs.
+- Support real institutional data.
+
+2. Technology Stack
+
+Use a modern, secure, maintainable technology stack compatible with free-tier deployment.
+
+Preferred technologies:
+
+- Frontend: React with TypeScript.
+- Framework: Next.js or a compatible React full-stack framework.
+- Styling: Tailwind CSS.
+- UI components: shadcn/ui or equivalent.
+- Icons: Lucide Icons.
+- Database: Supabase PostgreSQL.
+- Authentication: Supabase Auth.
+- Backend: Secure server-side API endpoints.
+- AI integration: Google Gemini API.
+- QR generation: QRCode library.
+- QR scanning: html5-qrcode or equivalent.
+- Charts: Recharts.
+- Excel export: SheetJS or equivalent.
+- PDF export: Arabic-compatible PDF generation.
+- Hosting: Google AI Studio supported deployment, or Vercel if compatible with institutional use.
+- Version control: GitHub.
+
+Use environment variables for all credentials and API keys.
+
+Never expose privileged database credentials or Gemini API keys in frontend code.
+
+If the preferred stack is incompatible with the execution environment, use an equivalent supported stack while preserving all required functionality.
+
+3. User Interface and Design
+
+Create a premium, elegant, modern academic management interface.
+
+Primary colors:
+
+- White: #FFFFFF
+- Light Blue: #E3F2FD
+- Primary Blue: #2196F3
+- Dark Blue: #1565C0
+- Background: #F5F9FF
+- Text: #1E293B
+- Success: #22C55E
+- Warning: #F59E0B
+- Danger: #EF4444
+
+Design requirements:
+
+- Arabic is the default language.
+- Full English language support.
+- RTL layout for Arabic.
+- LTR layout for English.
+- Language switching button.
+- Use Cairo or Tajawal fonts for Arabic.
+- Clean white backgrounds.
+- Light blue accents.
+- Rounded cards.
+- Professional typography.
+- Responsive navigation sidebar.
+- Mobile-friendly interfaces.
+- Accessible forms and buttons.
+- Loading indicators.
+- Empty-state illustrations.
+- Success and error notifications.
+- Confirmation dialogs.
+- Searchable and sortable tables.
+- Pagination.
+- Breadcrumb navigation.
+
+Include configurable university and college logo placeholders. Do not invent official institutional logos.
+
+The application must work on desktop computers, tablets, Android devices, and iPhones.
+
+4. User Roles and Permissions
+
+Implement secure Role-Based Access Control (RBAC).
+
+A. Super Administrator
+
+Permissions:
+
+- Manage the entire system.
+- Manage administrators.
+- Manage academic departments.
+- Manage lecturers and students.
+- Configure academic years and semesters.
+- Configure attendance policies.
+- Manage permissions.
+- Access authorized institutional reports.
+- Review audit logs.
+- Manage backups and system settings.
+
+B. Postgraduate Studies Administrator
+
+Permissions:
+
+- Add, edit, archive, and manage students.
+- Manage lecturers.
+- Manage academic departments.
+- Manage academic programs.
+- Manage subjects and student enrollments.
+- Create and update lecture schedules.
+- Import official data.
+- Monitor attendance across authorized departments.
+- Review approved lecture attendance.
+- Request attendance corrections.
+- Generate reports.
+- Use the AI assistant within authorized scope.
+
+C. Department Administrator
+
+Permissions:
+
+- Manage authorized department information.
+- View department students and lecturers.
+- Monitor department attendance.
+- Generate department-specific reports.
+- Use the AI assistant for department data only.
+
+D. Lecturer
+
+Permissions:
+
+- View assigned subjects and lectures.
+- View personal lecture schedule.
+- Start scheduled attendance sessions.
+- Generate dynamic QR codes.
+- Monitor student attendance in real time.
+- Review attendance before approval.
+- Manually correct attendance with a mandatory reason.
+- Approve and close attendance sessions.
+- View attendance history for assigned subjects.
+- Export authorized reports.
+- Use the AI assistant for assigned subjects only.
+
+E. Student
+
+Permissions:
+
+- View personal profile.
+- View academic schedule.
+- Scan lecture QR codes.
+- Record personal attendance.
+- View attendance confirmation status.
+- View personal attendance and absence records.
+- View attendance percentages.
+- View attended and missed academic hours.
+- Receive absence warnings.
+- Submit correction requests.
+- Access only personal academic attendance information.
+
+Enforce permissions at both frontend and database/backend levels.
+
+Do not rely on hiding interface elements as a security mechanism.
+
+5. Academic Department Management
+
+Create a complete academic department management module.
+
+Each department must contain:
+
+- Department ID.
+- Arabic department name.
+- English department name.
+- Department code.
+- Department administrator.
+- Available academic programs.
+- Active or inactive status.
+
+Support:
+
+- Master's programs.
+- PhD programs.
+- Multiple academic cohorts.
+- Multiple academic years.
+- Multiple semesters.
+
+Allow administrators to add actual academic departments dynamically.
+
+Do not hardcode unverified official department names.
+
+6. Student Management
+
+Create a complete student management module.
+
+Student fields:
+
+- Unique student ID.
+- University registration number.
+- Full Arabic name.
+- Full English name.
+- Academic department.
+- Academic program.
+- Academic year.
+- Semester.
+- Cohort.
+- University email.
+- Optional phone number.
+- Enrollment status.
+- Profile photo, optional.
+- Account status.
+
+Features:
+
+- Add students individually.
+- Edit student information.
+- Archive students.
+- Search students.
+- Filter by department and program.
+- Bulk import students using Excel or CSV.
+- Export student lists.
+- Detect duplicate university IDs.
+- Validate imported records.
+- Preview imports before confirmation.
+- Provide import error reports.
+
+Do not collect unnecessary personal or sensitive information.
+
+7. Lecturer Management
+
+Lecturer fields:
+
+- Lecturer ID.
+- Full Arabic name.
+- Full English name.
+- Academic title.
+- Academic department.
+- University email.
+- Assigned subjects.
+- Account status.
+
+Features:
+
+- Add and edit lecturers.
+- Assign lecturers to subjects.
+- Support multiple lecturers for a subject.
+- Assign a responsible lecturer to each lecture.
+- View lecturer schedules.
+- View lecturer attendance-session history.
+- Track lectures awaiting attendance approval.
+
+8. Subject Management
+
+Subject fields:
+
+- Subject ID.
+- Subject code.
+- Arabic subject name.
+- English subject name.
+- Academic department.
+- Academic program.
+- Academic year.
+- Semester.
+- Assigned lecturers.
+- Weekly academic hours.
+- Total planned academic hours.
+- Active status.
+
+Allow students to enroll in subjects according to their official academic program.
+
+Support mandatory and elective subjects.
+
+9. Academic Calendar and Lecture Scheduling
+
+Build a professional academic scheduling module.
+
+Each scheduled lecture must contain:
+
+- Lecture ID.
+- Academic year.
+- Semester.
+- Department.
+- Academic program.
+- Cohort.
+- Subject.
+- Responsible lecturer.
+- Lecture date.
+- Day of week.
+- Start time.
+- End time.
+- Planned lecture duration.
+- Academic credit or contact hours.
+- Classroom.
+- Lecture type.
+- Lecture status.
+- Notes.
+
+Lecture statuses:
+
+- Scheduled.
+- Attendance Open.
+- Attendance Pending Approval.
+- Approved.
+- Completed.
+- Cancelled.
+- Postponed.
+- Rescheduled.
+
+Features:
+
+- Daily calendar.
+- Weekly calendar.
+- Monthly calendar.
+- Recurring weekly lectures.
+- Individual lecture editing.
+- Semester schedule generation.
+- Schedule import from Excel.
+- Schedule conflict detection.
+- Holiday management.
+- Lecture cancellation.
+- Lecture rescheduling.
+- Replacement lecturers.
+- Additional and makeup lectures.
+
+Use Asia/Baghdad as the institutional timezone.
+
+Store timestamps consistently and display them in local Baghdad time.
+
+Support configurable academic-hour calculations rather than assuming every academic hour equals exactly 60 minutes.
+
+10. QR Code Attendance System
+
+Implement a secure, real-time QR-based attendance workflow.
+
+Attendance workflow
+
+1. The administration creates the official lecture schedule.
+2. The lecturer logs into the system.
+3. The lecturer selects an assigned scheduled lecture.
+4. The lecturer opens the attendance session.
+5. The system generates a secure dynamic QR code.
+6. The lecturer displays the QR code in the classroom.
+7. Students log into their accounts.
+8. Students scan the QR code using their mobile phones.
+9. The server validates the attendance request.
+10. Valid attendance appears instantly on the lecturer's screen.
+11. The lecturer reviews the attendance list.
+12. The lecturer approves attendance.
+13. The session closes and final records are stored.
+
+QR security requirements
+
+- Generate a cryptographically secure, unpredictable QR token.
+- Bind each token to one specific attendance session.
+- Rotate QR codes automatically every 30 seconds by default.
+- Make rotation duration configurable.
+- Display a visible expiration countdown.
+- Validate expiration on the server.
+- Reject expired or invalid tokens.
+- Require authenticated student accounts.
+- Verify student enrollment in the relevant subject.
+- Prevent duplicate attendance submissions.
+- Reject attendance for closed or cancelled lectures.
+- Prevent unauthorized lecturer session creation.
+- Do not include personal student information in QR codes.
+- Implement request rate limiting.
+- Store token hashes where appropriate.
+- Record suspicious attendance attempts.
+
+Support both:
+
+- In-app camera scanning.
+- Native mobile camera scanning through a secure attendance URL.
+
+Require HTTPS for camera functionality.
+
+If camera access fails, provide a secure alternative attendance submission method subject to lecturer approval.
+
+Optional anti-fraud features:
+
+- Classroom location verification.
+- Configurable geofencing.
+- Lecturer review of suspicious registrations.
+- Late-arrival detection.
+
+Location verification must be optional, consent-based, and disabled by default.
+
+Do not claim that QR codes alone guarantee physical presence or eliminate all attendance fraud.
+
+11. Lecturer Attendance Session Interface
+
+Create a dedicated attendance session page.
+
+Display:
+
+- Subject name.
+- Lecturer name.
+- Department.
+- Academic program.
+- Lecture date.
+- Lecture start and end times.
+- Planned academic hours.
+- Total enrolled students.
+- Registered students.
+- Remaining students.
+- Live attendance percentage.
+- Dynamic QR code.
+- QR expiration countdown.
+- Attendance session status.
+
+Include a real-time attendance table:
+
+- Student name.
+- University ID.
+- Registration timestamp.
+- Attendance status.
+- Attendance method.
+- Approval status.
+- Lecturer notes.
+
+Attendance actions:
+
+- Open attendance.
+- Pause attendance.
+- Resume attendance.
+- Regenerate QR code.
+- Manually mark attendance.
+- Mark late arrival.
+- Mark excused absence.
+- Add notes.
+- Close registration.
+- Approve attendance.
+
+Before approval, show a confirmation summary.
+
+After approval, lock the records against ordinary editing.
+
+Any later correction must require authorized access, a reason, and an audit record.
+
+12. Attendance Statuses and Calculations
+
+Support the following attendance statuses:
+
+- Present — حاضر
+- Absent — غائب
+- Late — متأخر
+- Excused Absence — غياب بعذر
+- Pending Approval — بانتظار الاعتماد
+- Not Recorded — غير مسجل
+- Cancelled Lecture — محاضرة ملغاة
+
+When a lecturer approves a session:
+
+- Confirm valid registered students.
+- Mark eligible unregistered students as absent unless another approved status exists.
+- Store the final attendance records.
+- Store the approving lecturer ID.
+- Store the approval timestamp.
+- Preserve the original registration timestamps.
+
+Use configurable institutional policies for late attendance and excused absence.
+
+Calculate:
+
+Attendance percentage = Attended eligible hours / Total eligible completed hours × 100
+
+Absence percentage = Absent eligible hours / Total eligible completed hours × 100
+
+Also calculate:
+
+- Total completed lectures.
+- Total attended lectures.
+- Total missed lectures.
+- Total scheduled hours.
+- Total completed hours.
+- Total attended hours.
+- Total absent hours.
+- Total excused hours.
+- Total late arrivals.
+
+Exclude cancelled lectures and unapproved sessions from finalized attendance calculations.
+
+Handle zero completed hours without division-by-zero errors.
+
+Preserve historical enrollment eligibility when calculating past attendance.
+
+13. Administrator Dashboard
+
+Create a professional analytics dashboard.
+
+Display KPI cards:
+
+- Total active students.
+- Total Master's students.
+- Total PhD students.
+- Total lecturers.
+- Total academic departments.
+- Total subjects.
+- Today's scheduled lectures.
+- Today's completed lectures.
+- Today's approved attendance sessions.
+- Sessions pending approval.
+- Today's attendance percentage.
+- Today's absence percentage.
+- Students approaching the absence limit.
+- Students exceeding the absence limit.
+
+Charts:
+
+- Daily attendance trend.
+- Weekly attendance trend.
+- Monthly attendance trend.
+- Attendance by department.
+- Attendance by academic program.
+- Attendance by subject.
+- Attendance by lecturer.
+- Attendance versus absence.
+- Attendance hours by department.
+- Student absence distribution.
+
+Dashboard filters:
+
+- Academic year.
+- Semester.
+- Department.
+- Program.
+- Cohort.
+- Subject.
+- Lecturer.
+- Date range.
+
+All statistics must be calculated from actual authorized database records.
+
+Do not use hardcoded KPI values.
+
+14. Student Dashboard
+
+Create a mobile-first student dashboard.
+
+Display:
+
+- Student name.
+- Department.
+- Academic program.
+- Today's lectures.
+- Upcoming lectures.
+- QR scanning button.
+- Latest attendance confirmation.
+- Overall attendance percentage.
+- Total attended lectures.
+- Total missed lectures.
+- Total attended hours.
+- Total absent hours.
+- Absence warnings.
+
+Create a subject-level attendance table showing:
+
+- Subject.
+- Lecturer.
+- Completed lectures.
+- Attended lectures.
+- Missed lectures.
+- Completed hours.
+- Attended hours.
+- Absent hours.
+- Attendance percentage.
+
+Allow students to view their own historical attendance by date.
+
+Students must not be able to modify official attendance records.
+
+15. AI Agent — Graduate AI Assistant
+
+Integrate Google Gemini as a secure AI-powered assistant.
+
+Assistant name:
+
+Graduate AI Assistant
+
+Arabic name:
+
+المساعد الذكي للدراسات العليا
+
+The assistant must support Arabic and English natural-language questions.
+
+Example questions:
+
+- كم عدد الطلبة الحاضرين اليوم؟
+- كم عدد الطلبة الغائبين اليوم؟
+- كم محاضرة حضر الطالب في مادة الإحصاء المتقدم؟
+- كم ساعة غياب لدى الطالب؟
+- ما نسبة حضور طلبة قسم تقنيات المعلومات الإدارية؟
+- من هم الطلبة الذين تجاوزوا نسبة الغياب المسموح بها؟
+- ما أكثر المواد الدراسية حضوراً؟
+- ما المحاضرات التي لم يتم اعتماد حضورها؟
+- اعرض مقارنة الحضور بين طلبة الماجستير والدكتوراه.
+- اعرض تقرير حضور الأسبوع الماضي.
+- كم محاضرة قدم كل أستاذ؟
+- ما عدد ساعات المحاضرات المنجزة خلال الشهر؟
+- اعرض سجل حضور طالب محدد خلال الفصل الدراسي.
+
+AI architecture
+
+Use Gemini function calling or structured tool calling.
+
+Implement secure backend functions such as:
+
+- get_attendance_summary
+- get_student_attendance
+- get_subject_attendance
+- get_department_statistics
+- get_lecturer_statistics
+- get_daily_attendance
+- get_date_range_attendance
+- get_absence_threshold_students
+- get_pending_approvals
+- get_lecture_history
+- generate_attendance_report
+
+The AI assistant must:
+
+- Retrieve real authorized database information.
+- Respect the logged-in user's role.
+- Use deterministic backend calculations for statistics.
+- Return accurate numerical results.
+- Identify the reporting period.
+- Clearly distinguish finalized and pending attendance.
+- Display results using tables and charts when appropriate.
+- Support follow-up questions.
+- Provide report-generation actions.
+- State when requested information is unavailable.
+- Avoid inventing records or statistics.
+
+AI security
+
+- Do not give Gemini unrestricted database access.
+- Do not execute arbitrary AI-generated SQL.
+- Use predefined, parameterized, read-only backend functions.
+- Validate all tool-call parameters.
+- Enforce authorization for every function call.
+- Protect against prompt injection.
+- Never reveal API keys or database credentials.
+- Minimize data sent to the AI provider.
+- Avoid transmitting student names or personal identifiers to external AI services when aggregated or pseudonymized data is sufficient.
+- Maintain authorized AI activity logs.
+- Do not allow the AI assistant to modify attendance records.
+
+Provide a non-AI statistics search interface as a fallback when Gemini is unavailable or its free quota is exhausted.
+
+16. Reporting System
+
+Build a comprehensive report center.
+
+Supported reporting periods:
+
+- Daily.
+- Weekly.
+- Every two weeks.
+- Monthly.
+- Semester.
+- Academic year.
+- Custom date range.
+
+Report types:
+
+- Daily attendance report.
+- Weekly attendance report.
+- Biweekly attendance report.
+- Monthly attendance report.
+- Individual student attendance report.
+- Department attendance report.
+- Subject attendance report.
+- Lecturer attendance report.
+- Master's attendance report.
+- PhD attendance report.
+- Student absence report.
+- Students exceeding absence limits.
+- Completed lecture report.
+- Pending attendance approval report.
+- Academic hours report.
+- Attendance correction report.
+
+Report filters:
+
+- Academic year.
+- Semester.
+- Department.
+- Program.
+- Cohort.
+- Student.
+- Lecturer.
+- Subject.
+- Attendance status.
+- Start date.
+- End date.
+
+Export formats:
+
+- Excel XLSX.
+- PDF.
+- CSV.
+- Printable report.
+
+Reports must contain:
+
+- University name.
+- College name.
+- Postgraduate Studies Department.
+- Report title.
+- Reporting period.
+- Generation timestamp.
+- Applied filters.
+- Attendance details.
+- Summary statistics.
+- Total attendance hours.
+- Total absence hours.
+- Attendance percentage.
+- Page numbers where appropriate.
+- Signature and approval fields.
+
+Ensure Arabic text renders correctly in PDF and Excel exports.
+
+17. Absence Policy and Alerts
+
+Create configurable attendance policies.
+
+Administrators must be able to define:
+
+- Maximum allowed absence percentage.
+- First warning threshold.
+- Second warning threshold.
+- Critical absence threshold.
+- Late attendance policy.
+- Excused absence policy.
+- Academic-hour calculation policy.
+- Attendance registration duration.
+
+Do not assume any specific Iraqi university absence regulation without official configuration.
+
+Automatically generate alerts when students approach or exceed configured thresholds.
+
+Alert recipients:
+
+- Student.
+- Responsible lecturer.
+- Department administrator.
+- Postgraduate Studies administrator.
+
+Support:
+
+- In-app notifications.
+- Optional email notifications.
+- Notification history.
+- Read and unread status.
+
+18. Attendance Correction Requests
+
+Allow students to submit correction requests.
+
+Request fields:
+
+- Student ID.
+- Lecture ID.
+- Current attendance status.
+- Requested correction.
+- Reason.
+- Optional supporting document.
+- Submission timestamp.
+- Request status.
+
+Statuses:
+
+- Pending.
+- Approved.
+- Rejected.
+
+Only authorized staff may approve corrections.
+
+Record the previous status, new status, approving user, reason, and timestamp.
+
+19. Database Architecture
+
+Create a normalized PostgreSQL database with migrations, constraints, indexes, and foreign keys.
+
+Required tables:
+
+- profiles
+- roles
+- user_roles
+- departments
+- academic_programs
+- academic_years
+- semesters
+- cohorts
+- students
+- lecturers
+- subjects
+- lecturer_subjects
+- student_enrollments
+- lecture_schedules
+- lectures
+- attendance_sessions
+- attendance_tokens
+- attendance_records
+- attendance_corrections
+- attendance_policies
+- notifications
+- holidays
+- audit_logs
+- ai_query_logs
+- report_history
+- system_settings
+
+Database requirements:
+
+- Use UUID primary keys where appropriate.
+- Enforce foreign key relationships.
+- Prevent duplicate student registrations.
+- Prevent duplicate attendance records for the same student and lecture.
+- Use transactional attendance approval.
+- Use timestamps for creation and updates.
+- Implement Row-Level Security.
+- Create appropriate database indexes.
+- Preserve historical academic records.
+- Use soft deletion or archiving where appropriate.
+- Protect approved attendance records.
+- Use database constraints for data integrity.
+- Include database migrations and setup instructions.
+
+20. Audit Log
+
+Record all important system operations.
+
+Audit events:
+
+- Login and logout.
+- Student creation and modification.
+- Lecturer creation and modification.
+- Schedule creation and modification.
+- Attendance session opening.
+- QR generation and rotation.
+- Attendance registration.
+- Invalid attendance attempts.
+- Manual attendance changes.
+- Attendance approval.
+- Attendance correction.
+- Report generation.
+- Permission changes.
+- System configuration changes.
+
+Audit log fields:
+
+- Event ID.
+- User ID.
+- User role.
+- Action.
+- Affected record.
+- Previous value where appropriate.
+- New value where appropriate.
+- Timestamp.
+- Reason.
+- Relevant security metadata.
+
+Protect audit logs from ordinary editing and deletion.
+
+Never store passwords, raw access tokens, or API keys in logs.
+
+21. Authentication and Security
+
+Implement:
+
+- Secure email and password authentication.
+- Password reset.
+- Account activation.
+- Role-based access.
+- Protected routes.
+- Secure sessions.
+- Server-side authorization.
+- Input validation.
+- SQL injection protection.
+- XSS protection.
+- CSRF protection where applicable.
+- Rate limiting.
+- HTTPS.
+- Secure cookies where applicable.
+- Database Row-Level Security.
+- Optional multi-factor authentication for administrators.
+- Account disabling.
+- Secure file uploads.
+- Environment-variable management.
+
+Disable unrestricted public registration.
+
+Student and lecturer accounts must be created or invited by authorized administrators.
+
+Do not include hardcoded default passwords.
+
+Provide a secure first-administrator setup procedure.
+
+22. Import and Export Center
+
+Create an import center supporting Excel and CSV.
+
+Provide downloadable templates for:
+
+- Academic departments.
+- Academic programs.
+- Students.
+- Lecturers.
+- Subjects.
+- Student enrollments.
+- Lecture schedules.
+
+Import features:
+
+- File upload.
+- Column mapping.
+- Data preview.
+- Validation.
+- Duplicate detection.
+- Error reporting.
+- Confirmation before saving.
+- Transactional import where appropriate.
+
+Allow administrators to populate the system with actual institutional data without editing source code.
+
+23. Navigation Structure
+
+Administrator sidebar:
+
+- Dashboard — لوحة التحكم
+- Departments — الأقسام العلمية
+- Academic Programs — البرامج الدراسية
+- Students — الطلبة
+- Lecturers — التدريسيون
+- Subjects — المواد الدراسية
+- Academic Calendar — التقويم الأكاديمي
+- Lecture Schedule — جدول المحاضرات
+- Attendance Sessions — جلسات الحضور
+- Attendance Records — سجلات الحضور
+- Corrections — طلبات التصحيح
+- Reports — التقارير
+- AI Assistant — المساعد الذكي
+- Notifications — الإشعارات
+- Import and Export — الاستيراد والتصدير
+- Audit Logs — سجل العمليات
+- Settings — الإعدادات
+- Logout — تسجيل الخروج
+
+Lecturer sidebar:
+
+- Dashboard.
+- My Schedule.
+- My Subjects.
+- Start Attendance.
+- Pending Approvals.
+- Attendance History.
+- Reports.
+- AI Assistant.
+- Notifications.
+- Profile.
+
+Student navigation:
+
+- Home.
+- My Schedule.
+- Scan QR Code.
+- My Attendance.
+- Correction Requests.
+- Notifications.
+- Profile.
+
+24. Real-Time Functionality
+
+Use Supabase Realtime or equivalent supported technology.
+
+Implement:
+
+- Real-time attendance updates.
+- Live student registration counts.
+- Live attendance percentage.
+- QR expiration countdown.
+- Session status updates.
+- Lecturer approval notifications.
+- Student attendance confirmation.
+- Automatic refresh after successful operations.
+
+Handle temporary connection failures gracefully.
+
+Do not mark attendance as successful until the server confirms the transaction.
+
+25. Progressive Web Application
+
+Make the application installable as a Progressive Web App where supported.
+
+Include:
+
+- Application manifest.
+- Application icons.
+- Mobile home-screen installation.
+- Responsive layouts.
+- Secure service-worker configuration.
+- Offline interface fallback.
+
+Do not cache sensitive attendance data insecurely.
+
+Do not approve or finalize attendance while offline.
+
+26. Free Hosting and Deployment
+
+Prepare the application for deployment using free-tier services where technically and legally appropriate.
+
+Preferred options:
+
+- Supabase Free for database and authentication.
+- A compatible free hosting service for the application.
+- Gemini API free quota for development and approved testing.
+
+Provide:
+
+- Complete source code.
+- README file.
+- Database migration files.
+- Environment variable example file.
+- Dependency installation instructions.
+- Local development instructions.
+- Deployment instructions.
+- Database connection instructions.
+- Gemini API setup instructions.
+- Secure administrator creation instructions.
+- Backup and restoration instructions.
+
+Required environment variables may include:
+
+NEXT_PUBLIC_SUPABASE_URL
+
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+SUPABASE_SERVICE_ROLE_KEY
+
+GEMINI_API_KEY
+
+APP_URL
+
+Use the service-role key only on trusted server-side code.
+
+Do not claim deployment has succeeded unless a working deployment URL has actually been created and verified.
+
+Check hosting terms, free-tier limitations, institutional usage restrictions, and data privacy requirements before processing real student information.
+
+27. Initial Data and Production Mode
+
+The production database must initially be empty except for necessary system configuration and securely created administrative accounts.
+
+Do not invent actual student or lecturer names.
+
+Do not invent official academic schedules.
+
+Provide a separate optional demo mode with clearly labeled synthetic data.
+
+Demo data must never be mixed with real production records.
+
+Administrators must be able to populate real data through the interface and Excel imports.
+
+28. Testing and Quality Assurance
+
+Implement and test the following scenarios:
+
+1. Administrator login.
+2. Lecturer login.
+3. Student login.
+4. Unauthorized access rejection.
+5. Department creation.
+6. Student import.
+7. Lecturer assignment.
+8. Subject creation.
+9. Lecture scheduling.
+10. Attendance session creation.
+11. QR generation.
+12. QR expiration.
+13. Valid student attendance.
+14. Duplicate attendance rejection.
+15. Unauthorized student rejection.
+16. Closed session rejection.
+17. Real-time lecturer updates.
+18. Manual attendance correction.
+19. Attendance approval.
+20. Automatic absence recording.
+21. Approved record protection.
+22. Attendance percentage calculation.
+23. Academic-hour calculation.
+24. Cancelled lecture exclusion.
+25. Report filtering.
+26. Excel export.
+27. Arabic PDF export.
+28. AI query accuracy.
+29. AI permission enforcement.
+30. Mobile camera functionality.
+31. Arabic RTL layout.
+32. English LTR layout.
+33. Database persistence.
+34. Free-tier quota failure handling.
+35. Concurrent attendance submissions.
+36. Audit log integrity.
+37. Password reset.
+38. Import validation.
+39. Attendance correction approval.
+40. Backup and restoration.
+
+Run available automated tests, fix detected errors, and provide a test summary.
+
+Do not claim that unexecuted tests have passed.
+
+29. Acceptance Criteria
+
+The system is considered complete only when:
+
+- Users can authenticate securely.
+- Role permissions are enforced.
+- Administrators can enter and import real data.
+- Administrators can create lecture schedules.
+- Lecturers can generate functional QR codes.
+- Students can scan QR codes using mobile phones.
+- Attendance is stored persistently.
+- Duplicate attendance is prevented.
+- Lecturers can approve attendance.
+- Approved records are protected.
+- Absence and attendance hours are calculated correctly.
+- Reports can be filtered and exported.
+- The AI assistant retrieves authorized real data.
+- The interface supports Arabic and English.
+- The application works on mobile and desktop.
+- Database migrations and deployment instructions are available.
+
+30. Final Execution Instructions
+
+Start building the application immediately.
+
+First establish the application architecture and database schema, then implement authentication, role permissions, and the core attendance workflow.
+
+Continue implementing all remaining modules.
+
+Do not stop after creating a landing page or dashboard.
+
+Do not use non-functional placeholder buttons.
+
+Do not simulate database operations using temporary frontend arrays.
+
+Every form, navigation item, action, filter, report, and attendance workflow must be functional or explicitly identified as incomplete.
+
+Prioritize:
+
+1. Security.
+2. Data integrity.
+3. Functional attendance workflow.
+4. Ease of use.
+5. Accurate reports.
+6. AI integration.
+7. Visual quality.
+
+Use modular, maintainable, documented code.
+
+Where external credentials are required, provide clear setup instructions instead of inventing credentials.
+
+At completion, provide:
+
+- A working application preview.
+- Complete source code.
+- Database schema and migrations.
+- Deployment configuration.
+- Setup documentation.
+- Test results.
+- List of implemented features.
+- List of any remaining limitations.
+- A verified live deployment URL if deployment is supported and successfully completed.
+
+Build SGAS as a professional institutional postgraduate attendance management system, not a simple demonstration website.

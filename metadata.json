@@ -1,0 +1,6 @@
+{
+  "name": "SGAS - Smart Graduate Attendance System",
+  "description": "نظام إدارة حضور طلبة الدراسات العليا الذكي - الجامعة التقنية الوسطى / الكلية التقنية الإدارية – بغداد",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
